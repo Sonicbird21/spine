@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-release:
     runs-on: ubuntu-latest
@@ -59,3 +62,16 @@ jobs:
           name: spine-release-${{ github.sha }}
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: release-${{ github.sha }}
+          name: Release ${{ github.sha }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            Commit: ${{ github.sha }}
+            Commit message: ${{ github.event.head_commit.message }}
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          files: app/build/outputs/apk/release/*.apk
+          fail_on_unmatched_files: true
