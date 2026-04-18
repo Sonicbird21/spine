@@ -56,6 +56,9 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: bash ./gradlew assembleRelease
 
+      - name: Compute short commit hash
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
@@ -64,14 +67,15 @@ jobs:
           if-no-files-found: error
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: release-${{ github.sha }}
-          name: Release ${{ github.sha }}
-          target_commitish: ${{ github.sha }}
+          tag: rolling-release
+          name: Release ${{ env.SHORT_SHA }}
           body: |
-            Commit: ${{ github.sha }}
+            Commit: ${{ env.SHORT_SHA }}
             Commit message: ${{ github.event.head_commit.message }}
             Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          files: app/build/outputs/apk/release/*.apk
-          fail_on_unmatched_files: true
+          artifacts: app/build/outputs/apk/release/*.apk
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: true
