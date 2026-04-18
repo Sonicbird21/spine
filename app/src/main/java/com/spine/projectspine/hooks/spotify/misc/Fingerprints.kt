@@ -1,0 +1,130 @@
+package com.spine.projectspine.hooks.spotify.misc
+
+import com.spine.projectspine.core.dexkit.AccessFlags
+import com.spine.projectspine.core.dexkit.Opcode
+import com.spine.projectspine.core.dexkit.findClassDirect
+import com.spine.projectspine.core.dexkit.findFieldDirect
+import com.spine.projectspine.core.dexkit.findMethodDirect
+import com.spine.projectspine.core.dexkit.fingerprint
+import com.spine.projectspine.core.dexkit.strings
+import org.luckypray.dexkit.query.enums.StringMatchType
+import org.luckypray.dexkit.query.enums.UsingType
+import org.luckypray.dexkit.result.ClassData
+import org.luckypray.dexkit.result.MethodData
+
+val productStateProtoFingerprint = findMethodDirect {
+    fingerprint {
+        returns("Ljava/util/Map;")
+        classMatcher { descriptor = "Lcom/spotify/remoteconfig/internal/ProductStateProto;" }
+    }
+}
+
+val attributesMapField = findFieldDirect {
+    productStateProtoFingerprint().usingFields.single().field
+}
+
+val buildQueryParametersFingerprint = findMethodDirect {
+    var result: MethodData? = null
+    withBridge { bridge ->
+        result = bridge.findMethod {
+            matcher {
+                strings("trackRows", "device_type:tablet")
+            }
+        }.single()
+    }
+    requireNotNull(result)
+}
+
+val contextFromJsonFingerprint = findMethodDirect {
+    fingerprint {
+        opcodes(
+            Opcode.INVOKE_STATIC,
+            Opcode.MOVE_RESULT_OBJECT,
+            Opcode.INVOKE_VIRTUAL,
+            Opcode.MOVE_RESULT_OBJECT,
+            Opcode.INVOKE_STATIC,
+        )
+        methodMatcher {
+            name = "fromJson"
+            declaredClass("voiceassistants.playermodels.ContextJsonAdapter", StringMatchType.EndsWith)
+        }
+    }
+}
+
+val contextMenuViewModelClass = findClassDirect {
+    runCatching {
+        fingerprint {
+            strings("ContextMenuViewModel(header=")
+        }
+    }.getOrElse {
+        fingerprint {
+            accessFlags(AccessFlags.CONSTRUCTOR)
+            strings("ContextMenuViewModel cannot contain items with duplicate itemResId. id=")
+            parameters("L", "Ljava/util/List;", "Z")
+        }
+    }.declaredClass!!
+}
+
+val viewModelClazz = findClassDirect {
+    var result: ClassData? = null
+    withBridge { bridge ->
+        result = bridge.findMethod {
+            findFirst = true
+            matcher { name("getViewModel") }
+        }.single().returnType!!
+    }
+    requireNotNull(result)
+}
+
+val isPremiumUpsellField = findFieldDirect {
+    viewModelClazz().fields.filter { it.typeName == "boolean" }[1]
+}
+
+private fun structureGetSectionsFingerprint(className: String) = findMethodDirect {
+    fingerprint {
+        classMatcher { className(className, StringMatchType.EndsWith) }
+        methodMatcher {
+            addUsingField {
+                usingType = UsingType.Read
+                name = "sections_"
+            }
+        }
+    }
+}
+
+val homeStructureGetSectionsFingerprint =
+    structureGetSectionsFingerprint("homeapi.proto.HomeStructure")
+val browseStructureGetSectionsFingerprint =
+    structureGetSectionsFingerprint("browsita.v1.resolved.BrowseStructure")
+
+val pendragonJsonFetchMessageRequestFingerprint = findMethodDirect {
+    var result: MethodData? = null
+    withBridge { bridge ->
+        result = bridge.findMethod {
+            matcher {
+                name("apply")
+                addInvoke {
+                    name("<init>")
+                    declaredClass("FetchMessageRequest", StringMatchType.EndsWith)
+                }
+            }
+        }.single()
+    }
+    requireNotNull(result)
+}
+
+val pendragonJsonFetchMessageListRequestFingerprint = findMethodDirect {
+    var result: MethodData? = null
+    withBridge { bridge ->
+        result = bridge.findMethod {
+            matcher {
+                name("apply")
+                addInvoke {
+                    name("<init>")
+                    declaredClass("FetchMessageListRequest", StringMatchType.EndsWith)
+                }
+            }
+        }.single()
+    }
+    requireNotNull(result)
+}
