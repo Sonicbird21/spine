@@ -1,6 +1,6 @@
 # Project Spine
 
-LSPosed/DexKit module for Spotify modifications.
+Xposed/DexKit module for Spotify modifications.
 
 ## Quick Start
 
@@ -27,5 +27,9 @@ APK: `app/build/outputs/apk/release/app-release.apk`
 
 1. Build debug APK
 2. Open LSPosed Manager → Modules
-3. Select the APK and install
-4. Reboot device
+3. Select the module and enable it
+4. Force stop Spotify and reopen
+
+### Credits
+Based on RevancedXposed_Spotify by chsbuffer
+[DexKit](https://luckypray.org/DexKit/en/): a high-performance dex runtime parsing library.
