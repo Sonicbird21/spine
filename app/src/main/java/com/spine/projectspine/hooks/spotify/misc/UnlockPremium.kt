@@ -6,8 +6,10 @@ import com.spine.projectspine.hooks.spotify.patches.UnlockPremiumPatch
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
+import java.util.ArrayList
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
+import java.lang.reflect.Method
 import org.luckypray.dexkit.wrap.DexField
 import org.luckypray.dexkit.wrap.DexMethod
 
@@ -62,26 +64,121 @@ fun BaseHook.unlockPremium() {
     )
 
     val contextMenuViewModelClazz = ::contextMenuViewModelClass.clazz
-    val isPremiumUpsell = runCatching { ::isPremiumUpsellField.field }.getOrNull()
+    var runtimeFallbackUpsellField: Field? = null
+
+    fun looksLikeViewModel(value: Any): Boolean {
+        if (value.toString().contains("ViewModel(itemResId=")) return true
+        val booleanCount = value.javaClass.declaredFields.count {
+            it.type == Boolean::class.java || it.type == Boolean::class.javaPrimitiveType
+        }
+        return booleanCount >= 5
+    }
+
+    fun resolveViewModel(item: Any): Any? {
+        if (looksLikeViewModel(item)) return item
+
+        runCatching { item.callMethod("getViewModel") }
+            .getOrNull()
+            ?.let { if (looksLikeViewModel(it)) return it }
+
+        item.javaClass.declaredMethods
+            .filter { it.parameterCount == 0 && it.returnType != Void.TYPE }
+            .forEach { method ->
+                runCatching {
+                    method.isAccessible = true
+                    method.invoke(item)
+                }.getOrNull()?.let { candidate ->
+                    if (looksLikeViewModel(candidate)) return candidate
+                }
+            }
+
+        item.javaClass.declaredFields
+            .forEach { field ->
+                runCatching {
+                    field.isAccessible = true
+                    field.get(item)
+                }.getOrNull()?.let { candidate ->
+                    if (looksLikeViewModel(candidate)) return candidate
+                }
+            }
+
+        return null
+    }
+
+    fun resolveRuntimeUpsellField(vm: Any): Field? {
+        runtimeFallbackUpsellField?.let { return it }
+        return runCatching {
+            val boolFields = vm.javaClass.declaredFields.filter {
+                it.type == Boolean::class.java || it.type == Boolean::class.javaPrimitiveType
+            }
+            if (boolFields.size >= 2) {
+                boolFields[1].also {
+                    it.isAccessible = true
+                    runtimeFallbackUpsellField = it
+                }
+            } else {
+                null
+            }
+        }.getOrNull()
+    }
+
+    fun filterContextMenuItems(original: List<*>): List<*> {
+        return original.filter {
+            it?.let { item ->
+                val vm = resolveViewModel(item) ?: return@let false
+                val resolvedField = resolveRuntimeUpsellField(vm)
+                if (resolvedField != null) {
+                    runCatching { resolvedField.get(vm) == true }.getOrDefault(false)
+                } else {
+                    // Last-resort fallback when field layout changes: rely on generated ViewModel.toString labels.
+                    vm.toString().contains("isPremiumUpsell=true")
+                }
+            } != true
+        }
+    }
+
     XposedBridge.hookAllConstructors(
         contextMenuViewModelClazz,
         object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                val isPremiumUpsellField = isPremiumUpsell ?: return
                 val parameterTypes = (param.method as Constructor<*>).parameterTypes
                 for (i in 0 until param.args.size) {
-                    if (parameterTypes[i].name != "java.util.List") continue
+                    if (!List::class.java.isAssignableFrom(parameterTypes[i])) continue
                     val original = param.args[i] as? List<*> ?: continue
-                    val filtered = original.filter {
-                        it?.callMethod("getViewModel")?.let { vm ->
-                            isPremiumUpsellField.get(vm)
-                        } != true
+                    val filtered = filterContextMenuItems(original)
+                    param.args[i] = if (ArrayList::class.java.isAssignableFrom(parameterTypes[i])) {
+                        ArrayList(filtered)
+                    } else {
+                        filtered
                     }
-                    param.args[i] = filtered
                 }
             }
         },
     )
+
+    val listArgMethods = contextMenuViewModelClazz.declaredMethods.filter { method ->
+        method.parameterTypes.any { List::class.java.isAssignableFrom(it) }
+    }
+
+    listArgMethods.forEach { method: Method ->
+        XposedBridge.hookMethod(
+            method,
+            object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    for (i in 0 until param.args.size) {
+                        if (!List::class.java.isAssignableFrom(method.parameterTypes[i])) continue
+                        val original = param.args[i] as? List<*> ?: continue
+                        val filtered = filterContextMenuItems(original)
+                        param.args[i] = if (ArrayList::class.java.isAssignableFrom(method.parameterTypes[i])) {
+                            ArrayList(filtered)
+                        } else {
+                            filtered
+                        }
+                    }
+                }
+            }
+        )
+    }
 
     ::homeStructureGetSectionsFingerprint.hookMethod {
         after { param ->

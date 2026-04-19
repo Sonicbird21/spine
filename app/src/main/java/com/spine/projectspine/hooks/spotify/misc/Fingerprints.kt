@@ -9,7 +9,6 @@ import com.spine.projectspine.core.dexkit.fingerprint
 import com.spine.projectspine.core.dexkit.strings
 import org.luckypray.dexkit.query.enums.StringMatchType
 import org.luckypray.dexkit.query.enums.UsingType
-import org.luckypray.dexkit.result.ClassData
 import org.luckypray.dexkit.result.MethodData
 
 val productStateProtoFingerprint = findMethodDirect {
@@ -63,21 +62,6 @@ val contextMenuViewModelClass = findClassDirect {
             parameters("L", "Ljava/util/List;", "Z")
         }
     }.declaredClass!!
-}
-
-val viewModelClazz = findClassDirect {
-    var result: ClassData? = null
-    withBridge { bridge ->
-        result = bridge.findMethod {
-            findFirst = true
-            matcher { name("getViewModel") }
-        }.single().returnType!!
-    }
-    requireNotNull(result)
-}
-
-val isPremiumUpsellField = findFieldDirect {
-    viewModelClazz().fields.filter { it.typeName == "boolean" }[1]
 }
 
 private fun structureGetSectionsFingerprint(className: String) = findMethodDirect {
