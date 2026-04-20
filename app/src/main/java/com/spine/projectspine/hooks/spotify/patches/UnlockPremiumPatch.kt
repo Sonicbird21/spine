@@ -88,6 +88,17 @@ object UnlockPremiumPatch {
         removeSections(sections, fieldName = "sectionTypeCase_", idsToRemove = browseSectionIds!!)
     }
 
+    fun removeNpvSections(sections: MutableList<*>) {
+        if (sections.isEmpty()) return
+        if (npvScrollSectionIds == null) {
+            val classLoader = sections.firstNotNullOfOrNull { it }?.javaClass?.classLoader ?: return
+            npvScrollSectionIds = listOfNotNull(
+                getIntConstantOrNull("com.spotify.scrollsita.v1.Section", "IMAGE_BRAND_AD_FIELD_NUMBER", classLoader)
+            )
+        }
+        removeSections(sections, fieldName = "sectionTypeCase_", idsToRemove = npvScrollSectionIds!!)
+    }
+
     private fun removeSections(sections: MutableList<*>, fieldName: String, idsToRemove: List<Int>) {
         if (idsToRemove.isEmpty()) return
         runCatching {

@@ -221,6 +221,29 @@ fun BaseHook.unlockPremium() {
         }
     }
 
+
+    ::npvScrollStructureGetSectionsFingerprint.hookMethod {
+        after { param ->
+            val sections = param.result
+            runCatching {
+                var clazz: Class<*>? = sections.javaClass
+                var boolField: java.lang.reflect.Field? = null
+                while (clazz != null) {
+                    boolField = clazz.declaredFields.firstOrNull { it.type == Boolean::class.java }
+                    if (boolField != null) break
+                    clazz = clazz.superclass
+                }
+                boolField?.let {
+                    it.isAccessible = true
+                    it.set(sections, true)
+                }
+            }
+            UnlockPremiumPatch.removeNpvSections(param.result as MutableList<*>)
+        }
+    }
+
+
+
     val replaceFetchRequestSingleWithError = object : XC_MethodHook() {
         val justMethod =
             DexMethod("Lio/reactivex/rxjava3/core/Single;->just(Ljava/lang/Object;)Lio/reactivex/rxjava3/core/Single;").toMethod()

@@ -68,6 +68,7 @@ private fun structureGetSectionsFingerprint(className: String) = findMethodDirec
     fingerprint {
         classMatcher { className(className, StringMatchType.EndsWith) }
         methodMatcher {
+            paramCount = 0
             addUsingField {
                 usingType = UsingType.Read
                 name = "sections_"
@@ -80,6 +81,8 @@ val homeStructureGetSectionsFingerprint =
     structureGetSectionsFingerprint("homeapi.proto.HomeStructure")
 val browseStructureGetSectionsFingerprint =
     structureGetSectionsFingerprint("browsita.v1.resolved.BrowseStructure")
+val npvScrollStructureGetSectionsFingerprint =
+    structureGetSectionsFingerprint("scrollsita.v1.NpvScrollStructure")
 
 val pendragonJsonFetchMessageRequestFingerprint = findMethodDirect {
     var result: MethodData? = null
