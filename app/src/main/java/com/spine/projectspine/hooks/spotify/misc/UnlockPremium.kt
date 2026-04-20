@@ -1,6 +1,7 @@
 package com.spine.projectspine.hooks.spotify.misc
 
 import com.spine.projectspine.core.hook.BaseHook
+import com.spine.projectspine.core.utils.Logger
 import com.spine.projectspine.core.utils.callMethod
 import com.spine.projectspine.hooks.spotify.patches.UnlockPremiumPatch
 import de.robv.android.xposed.XC_MethodHook
@@ -184,7 +185,13 @@ fun BaseHook.unlockPremium() {
         after { param ->
             val sections = param.result
             runCatching {
-                val boolField = sections.javaClass.declaredFields.firstOrNull { it.type == Boolean::class.java }
+                var clazz: Class<*>? = sections.javaClass
+                var boolField: java.lang.reflect.Field? = null
+                while (clazz != null) {
+                    boolField = clazz.declaredFields.firstOrNull { it.type == Boolean::class.java }
+                    if (boolField != null) break
+                    clazz = clazz.superclass
+                }
                 boolField?.let {
                     it.isAccessible = true
                     it.set(sections, true)
@@ -198,7 +205,13 @@ fun BaseHook.unlockPremium() {
         after { param ->
             val sections = param.result
             runCatching {
-                val boolField = sections.javaClass.declaredFields.firstOrNull { it.type == Boolean::class.java }
+                var clazz: Class<*>? = sections.javaClass
+                var boolField: java.lang.reflect.Field? = null
+                while (clazz != null) {
+                    boolField = clazz.declaredFields.firstOrNull { it.type == Boolean::class.java }
+                    if (boolField != null) break
+                    clazz = clazz.superclass
+                }
                 boolField?.let {
                     it.isAccessible = true
                     it.set(sections, true)

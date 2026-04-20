@@ -25,18 +25,9 @@ object UnlockPremiumPatch {
         OverrideAttribute("tablet-free", false, isExpected = false),
     )
 
-    private val removedHomeSectionIds by lazy {
-        listOfNotNull(
-            getIntConstantOrNull("com.spotify.home.evopage.homeapi.proto.Section", "VIDEO_BRAND_AD_FIELD_NUMBER"),
-            getIntConstantOrNull("com.spotify.home.evopage.homeapi.proto.Section", "IMAGE_BRAND_AD_FIELD_NUMBER"),
-        )
-    }
-
-    private val removedBrowseSectionIds by lazy {
-        listOfNotNull(
-            getIntConstantOrNull("com.spotify.browsita.v1.resolved.Section", "BRAND_ADS_FIELD_NUMBER"),
-        )
-    }
+    private var homeSectionIds: List<Int>? = null
+    private var browseSectionIds: List<Int>? = null
+    private var npvScrollSectionIds: List<Int>? = null
 
     fun overrideAttributes(attributes: Map<String, *>) {
         try {
@@ -75,11 +66,26 @@ object UnlockPremiumPatch {
     }
 
     fun removeHomeSections(sections: MutableList<*>) {
-        removeSections(sections, fieldName = "featureTypeCase_", idsToRemove = removedHomeSectionIds)
+        if (sections.isEmpty()) return
+        if (homeSectionIds == null) {
+            val classLoader = sections.firstNotNullOfOrNull { it }?.javaClass?.classLoader ?: return
+            homeSectionIds = listOfNotNull(
+                getIntConstantOrNull("com.spotify.home.evopage.homeapi.proto.Section", "VIDEO_BRAND_AD_FIELD_NUMBER", classLoader),
+                getIntConstantOrNull("com.spotify.home.evopage.homeapi.proto.Section", "IMAGE_BRAND_AD_FIELD_NUMBER", classLoader),
+            )
+        }
+        removeSections(sections, fieldName = "featureTypeCase_", idsToRemove = homeSectionIds!!)
     }
 
     fun removeBrowseSections(sections: MutableList<*>) {
-        removeSections(sections, fieldName = "sectionTypeCase_", idsToRemove = removedBrowseSectionIds)
+        if (sections.isEmpty()) return
+        if (browseSectionIds == null) {
+            val classLoader = sections.firstNotNullOfOrNull { it }?.javaClass?.classLoader ?: return
+            browseSectionIds = listOfNotNull(
+                getIntConstantOrNull("com.spotify.browsita.v1.resolved.Section", "BRAND_ADS_FIELD_NUMBER", classLoader),
+            )
+        }
+        removeSections(sections, fieldName = "sectionTypeCase_", idsToRemove = browseSectionIds!!)
     }
 
     private fun removeSections(sections: MutableList<*>, fieldName: String, idsToRemove: List<Int>) {
@@ -90,7 +96,6 @@ object UnlockPremiumPatch {
                 val section = iterator.next() ?: continue
                 val featureTypeId = XposedHelpers.getIntField(section, fieldName)
                 if (idsToRemove.contains(featureTypeId)) {
-                    Logger.infoDebugOnly("Removing section with feature type id $featureTypeId")
                     iterator.remove()
                 }
             }
@@ -99,12 +104,14 @@ object UnlockPremiumPatch {
         }
     }
 
-    private fun getIntConstantOrNull(className: String, fieldName: String): Int? {
+    private fun getIntConstantOrNull(className: String, fieldName: String, classLoader: ClassLoader): Int? {
         return runCatching {
-            val clazz = Class.forName(className)
+            val clazz = Class.forName(className, false, classLoader)
             val field = clazz.getDeclaredField(fieldName)
             field.isAccessible = true
             field.getInt(null)
+        }.onFailure {
+            Logger.error("Failed getting field $fieldName in $className", it)
         }.getOrNull()
     }
 }
