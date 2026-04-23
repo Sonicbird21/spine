@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package com.spine.projectspine.core.utils
+package org.sys.config.core.utils
 
 import de.robv.android.xposed.XC_MethodHook.MethodHookParam
 import de.robv.android.xposed.XposedBridge.invokeOriginalMethod

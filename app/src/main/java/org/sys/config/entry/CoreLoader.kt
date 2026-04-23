@@ -1,18 +1,18 @@
-package com.spine.projectspine.entry
+package org.sys.config.entry
 
 import android.app.Application
 import android.widget.Toast
-import com.spine.projectspine.core.hook.BaseHook
-import com.spine.projectspine.core.utils.Logger
-import com.spine.projectspine.core.utils.attachApplicationContext
-import com.spine.projectspine.hooks.spotify.SpotifyHook
+import org.sys.config.core.hook.BaseHook
+import org.sys.config.core.utils.Logger
+import org.sys.config.core.utils.attachApplicationContext
+import org.sys.config.hooks.spotify.SpotifyHook
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.IXposedHookZygoteInit.StartupParam
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
 
 // LSPosed entry point. Add target packages and their corresponding hook classes below.
-class MainHook : IXposedHookLoadPackage, IXposedHookZygoteInit {
+class CoreLoader : IXposedHookLoadPackage, IXposedHookZygoteInit {
     private var selectedPackage: String? = null
 
     private val factories: Map<String, (Application, LoadPackageParam) -> BaseHook> = mapOf(
@@ -29,7 +29,6 @@ class MainHook : IXposedHookLoadPackage, IXposedHookZygoteInit {
             Logger.info("Application context attached for ${lpparam.packageName}")
             runCatching {
                 factories[lpparam.packageName]?.invoke(app, lpparam)?.Hook()
-                Toast.makeText(app, "[Spine] Loaded.", Toast.LENGTH_SHORT).show()
             }.onFailure { err ->
                 Logger.error("Failed to initialize hooks for ${lpparam.packageName}", err)
             }

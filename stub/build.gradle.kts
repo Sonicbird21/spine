@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.spine.projectspine.stub"
+    namespace = "org.sys.config.stub"
     compileSdk = 36
 
     defaultConfig {

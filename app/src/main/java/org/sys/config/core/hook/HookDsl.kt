@@ -1,4 +1,4 @@
-package com.spine.projectspine.core.hook
+package org.sys.config.core.hook
 
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge

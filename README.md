@@ -1,4 +1,4 @@
-# Project Spine
+# Project SysConfig
 
 Xposed/DexKit module for Spotify modifications.
 
@@ -22,6 +22,12 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`
 ./gradlew assembleRelease
 ```
 APK: `app/build/outputs/apk/release/app-release.apk`
+
+By default, each build uses a randomized applicationId so the installed package name changes every build.
+
+Environment flags:
+- SYS_CONFIG_RANDOM_APP_ID=true|false (default: true)
+- SYS_CONFIG_BASE_APPLICATION_ID=com.example.base (default: org.sys.config)
 
 ### Install
 

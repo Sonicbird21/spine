@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.api.GradleException
+import java.util.UUID
 
 plugins {
     alias(libs.plugins.android.application)
@@ -8,12 +9,23 @@ plugins {
 
 fun envOrNull(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() }
 
+fun randomApplicationId(baseId: String): String {
+    val randomSuffix = UUID.randomUUID().toString().replace("-", "").take(10)
+    return "$baseId.r$randomSuffix"
+}
+
+val baseApplicationId = envOrNull("SYS_CONFIG_BASE_APPLICATION_ID") ?: "org.sys.config"
+val randomizeApplicationId = envOrNull("SYS_CONFIG_RANDOM_APP_ID")?.toBooleanStrictOrNull() ?: true
+val resolvedApplicationId = if (randomizeApplicationId) randomApplicationId(baseApplicationId) else baseApplicationId
+
+println("[SysConfig] Using applicationId: $resolvedApplicationId")
+
 android {
-    namespace = "com.spine.projectspine"
+    namespace = "org.sys.config"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.spine.projectspine"
+        applicationId = resolvedApplicationId
         minSdk = 27
         versionCode = 1
         versionName = "0.2.0"
@@ -41,10 +53,21 @@ android {
 
     buildTypes {
         debug {
-            isMinifyEnabled = false
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("release")
         }
     }

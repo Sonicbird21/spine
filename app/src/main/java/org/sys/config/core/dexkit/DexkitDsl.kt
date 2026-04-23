@@ -1,4 +1,4 @@
-package com.spine.projectspine.core.dexkit
+package org.sys.config.core.dexkit
 
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.DexKitCacheBridge

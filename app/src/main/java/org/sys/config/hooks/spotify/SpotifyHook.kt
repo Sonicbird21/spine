@@ -1,12 +1,12 @@
-package com.spine.projectspine.hooks.spotify
+package org.sys.config.hooks.spotify
 
 import android.app.Application
-import com.spine.projectspine.core.hook.BaseHook
-import com.spine.projectspine.core.hook.HookFunction
-import com.spine.projectspine.core.utils.Logger
-import com.spine.projectspine.hooks.spotify.misc.privacy.sanitizeSharingLinks
-import com.spine.projectspine.hooks.spotify.misc.unlockPremium
-import com.spine.projectspine.hooks.spotify.misc.widgets.fixThirdPartyLaunchersWidgets
+import org.sys.config.core.hook.BaseHook
+import org.sys.config.core.hook.HookFunction
+import org.sys.config.core.utils.Logger
+import org.sys.config.hooks.spotify.misc.privacy.sanitizeSharingLinks
+import org.sys.config.hooks.spotify.misc.unlockPremium
+import org.sys.config.hooks.spotify.misc.widgets.fixThirdPartyLaunchersWidgets
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
 
 class SpotifyHook(app: Application, lpparam: LoadPackageParam) : BaseHook(app, lpparam) {

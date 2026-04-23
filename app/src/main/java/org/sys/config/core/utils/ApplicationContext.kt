@@ -1,4 +1,4 @@
-package com.spine.projectspine.core.utils
+package org.sys.config.core.utils
 
 import android.app.Application
 import de.robv.android.xposed.XC_MethodHook

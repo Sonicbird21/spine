@@ -7,7 +7,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ProjectSpine"
+        android:theme="@style/Theme.SysConfig"
         tools:targetApi="31">
 
         <meta-data

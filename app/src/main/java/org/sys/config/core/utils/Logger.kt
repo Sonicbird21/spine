@@ -1,6 +1,6 @@
-package com.spine.projectspine.core.utils
+package org.sys.config.core.utils
 
-import com.spine.projectspine.BuildConfig
+import org.sys.config.BuildConfig
 import de.robv.android.xposed.XposedBridge
 
 /**
@@ -8,7 +8,7 @@ import de.robv.android.xposed.XposedBridge
  * Automatically tags all logs with the module name for easy filtering.
  */
 object Logger {
-    private const val TAG = "ProjectSpine"
+    private const val TAG = "SysConfig"
 
     fun debug(message: String) {
         log("D", message)

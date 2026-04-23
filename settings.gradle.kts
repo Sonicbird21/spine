@@ -21,6 +21,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ProjectSpine"
+rootProject.name = "SysConfig"
 include(":app")
 include(":stub")

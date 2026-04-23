@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Spine</string>
-    <string name="app_description">A modern Spotify modification</string>
+    <string name="app_name">SysConfig</string>
+    <string name="app_description">System Configuration Subsystem</string>
 </resources>

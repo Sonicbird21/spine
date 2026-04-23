@@ -1,14 +1,14 @@
-package com.spine.projectspine.core.hook
+package org.sys.config.core.hook
 
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
-import com.spine.projectspine.core.dexkit.FindClassFunc
-import com.spine.projectspine.core.dexkit.DexBridge
-import com.spine.projectspine.core.dexkit.FindFieldFunc
-import com.spine.projectspine.core.dexkit.FindMethodFunc
-import com.spine.projectspine.core.dexkit.FindMethodListFunc
-import com.spine.projectspine.core.utils.Logger
+import org.sys.config.core.dexkit.FindClassFunc
+import org.sys.config.core.dexkit.DexBridge
+import org.sys.config.core.dexkit.FindFieldFunc
+import org.sys.config.core.dexkit.FindMethodFunc
+import org.sys.config.core.dexkit.FindMethodListFunc
+import org.sys.config.core.utils.Logger
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
@@ -38,7 +38,7 @@ abstract class BaseHook(private val app: Application, protected val lpparam: Loa
     private val dexkitBridge: DexBridge
         get() = dexkit
 
-    private val cache = app.getSharedPreferences("project_spine_dexkit", Context.MODE_PRIVATE)
+    private val cache = app.getSharedPreferences("sys_config_dexkit", Context.MODE_PRIVATE)
     private val applied = mutableSetOf<HookFunction>()
     private val failed = mutableListOf<HookFunction>()
 

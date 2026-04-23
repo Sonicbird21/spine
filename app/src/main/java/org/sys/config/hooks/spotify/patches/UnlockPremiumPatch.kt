@@ -1,6 +1,6 @@
-package com.spine.projectspine.hooks.spotify.patches
+package org.sys.config.hooks.spotify.patches
 
-import com.spine.projectspine.core.utils.Logger
+import org.sys.config.core.utils.Logger
 import de.robv.android.xposed.XposedHelpers
 
 object UnlockPremiumPatch {
@@ -11,18 +11,18 @@ object UnlockPremiumPatch {
     )
 
     private val premiumOverrides = listOf(
-        OverrideAttribute("ads", false),
-        OverrideAttribute("player-license", "premium"),
-        OverrideAttribute("player-license-v2", "premium", isExpected = false),
-        OverrideAttribute("shuffle", false),
-        OverrideAttribute("on-demand", true),
-        OverrideAttribute("streaming", true),
-        OverrideAttribute("pick-and-shuffle", false),
-        OverrideAttribute("streaming-rules", ""),
-        OverrideAttribute("nft-disabled", "1"),
-        OverrideAttribute("type", "premium"),
-        OverrideAttribute("can_use_superbird", true, isExpected = false),
-        OverrideAttribute("tablet-free", false, isExpected = false),
+        OverrideAttribute("ads", false), // !! true = no kick 
+     //   OverrideAttribute("player-license", "premium"),
+     //   OverrideAttribute("player-license-v2", "premium", isExpected = false),
+     //   OverrideAttribute("shuffle", false),
+     //   OverrideAttribute("on-demand", true),
+     //   OverrideAttribute("streaming", true),
+     //   OverrideAttribute("pick-and-shuffle", false),
+     //   OverrideAttribute("streaming-rules", ""),
+     //   OverrideAttribute("nft-disabled", "1"),
+     //   OverrideAttribute("type", "premium"),
+     //   OverrideAttribute("can_use_superbird", true, isExpected = false),
+     //   OverrideAttribute("tablet-free", false, isExpected = false),
     )
 
     private var homeSectionIds: List<Int>? = null

@@ -1,12 +1,12 @@
-package com.spine.projectspine.hooks.spotify.misc
+package org.sys.config.hooks.spotify.misc
 
-import com.spine.projectspine.core.dexkit.AccessFlags
-import com.spine.projectspine.core.dexkit.Opcode
-import com.spine.projectspine.core.dexkit.findClassDirect
-import com.spine.projectspine.core.dexkit.findFieldDirect
-import com.spine.projectspine.core.dexkit.findMethodDirect
-import com.spine.projectspine.core.dexkit.fingerprint
-import com.spine.projectspine.core.dexkit.strings
+import org.sys.config.core.dexkit.AccessFlags
+import org.sys.config.core.dexkit.Opcode
+import org.sys.config.core.dexkit.findClassDirect
+import org.sys.config.core.dexkit.findFieldDirect
+import org.sys.config.core.dexkit.findMethodDirect
+import org.sys.config.core.dexkit.fingerprint
+import org.sys.config.core.dexkit.strings
 import org.luckypray.dexkit.query.enums.StringMatchType
 import org.luckypray.dexkit.query.enums.UsingType
 import org.luckypray.dexkit.result.MethodData
