@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "org.sys.config.stub"
+    namespace = "com.spotify.music.stub"
     compileSdk = 36
 
     defaultConfig {

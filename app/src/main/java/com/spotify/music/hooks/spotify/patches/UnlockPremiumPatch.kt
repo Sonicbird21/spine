@@ -1,6 +1,6 @@
-package org.sys.config.hooks.spotify.patches
+package com.spotify.music.hooks.spotify.patches
 
-import org.sys.config.core.utils.Logger
+import com.spotify.music.core.utils.Logger
 import de.robv.android.xposed.XposedHelpers
 
 object UnlockPremiumPatch {
@@ -12,7 +12,7 @@ object UnlockPremiumPatch {
 
     private val premiumOverrides = listOf(
         OverrideAttribute("ads", false), // !! true = no kick 
-     //   OverrideAttribute("player-license", "premium"),
+        OverrideAttribute("player-license", "premium"),
      //   OverrideAttribute("player-license-v2", "premium", isExpected = false),
      //   OverrideAttribute("shuffle", false),
      //   OverrideAttribute("on-demand", true),

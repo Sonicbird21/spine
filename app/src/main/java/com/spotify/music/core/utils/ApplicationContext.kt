@@ -1,4 +1,4 @@
-package org.sys.config.core.utils
+package com.spotify.music.core.utils
 
 import android.app.Application
 import de.robv.android.xposed.XC_MethodHook

@@ -1,5 +1,5 @@
 # Keep the entry class referenced by app/src/main/assets/xposed_init.
--keep class org.sys.config.entry.CoreLoader { *; }
+-keep class com.spotify.music.entry.CoreLoader { *; }
 
 # Keep Xposed hook entry interface implementations discoverable.
 -keep class * implements de.robv.android.xposed.IXposedHookLoadPackage { *; }

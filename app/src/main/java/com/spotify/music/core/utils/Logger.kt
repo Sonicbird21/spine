@@ -1,6 +1,6 @@
-package org.sys.config.core.utils
+package com.spotify.music.core.utils
 
-import org.sys.config.BuildConfig
+import com.spotify.music.BuildConfig
 import de.robv.android.xposed.XposedBridge
 
 /**

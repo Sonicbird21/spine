@@ -1,7 +1,7 @@
-package org.sys.config.hooks.spotify.misc.privacy
+package com.spotify.music.hooks.spotify.misc.privacy
 
-import org.sys.config.core.dexkit.findMethodDirect
-import org.sys.config.core.dexkit.fingerprint
+import com.spotify.music.core.dexkit.findMethodDirect
+import com.spotify.music.core.dexkit.fingerprint
 
 val shareCopyUrlFingerprint = findMethodDirect {
     runCatching {

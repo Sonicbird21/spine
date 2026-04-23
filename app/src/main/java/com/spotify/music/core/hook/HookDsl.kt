@@ -1,4 +1,4 @@
-package org.sys.config.core.hook
+package com.spotify.music.core.hook
 
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge

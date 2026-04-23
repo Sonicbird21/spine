@@ -1,7 +1,7 @@
-package org.sys.config.hooks.spotify.patches
+package com.spotify.music.hooks.spotify.patches
 
 import android.net.Uri
-import org.sys.config.core.utils.Logger
+import com.spotify.music.core.utils.Logger
 
 object SanitizeSharingLinksPatch {
     private val parametersToRemove = setOf("si", "utm_source")

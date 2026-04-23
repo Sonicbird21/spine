@@ -1,11 +1,11 @@
-package org.sys.config.entry
+package com.spotify.music.entry
 
 import android.app.Application
 import android.widget.Toast
-import org.sys.config.core.hook.BaseHook
-import org.sys.config.core.utils.Logger
-import org.sys.config.core.utils.attachApplicationContext
-import org.sys.config.hooks.spotify.SpotifyHook
+import com.spotify.music.core.hook.BaseHook
+import com.spotify.music.core.utils.Logger
+import com.spotify.music.core.utils.attachApplicationContext
+import com.spotify.music.hooks.spotify.SpotifyHook
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.IXposedHookZygoteInit.StartupParam

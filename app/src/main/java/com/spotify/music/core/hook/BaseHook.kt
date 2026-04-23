@@ -1,14 +1,14 @@
-package org.sys.config.core.hook
+package com.spotify.music.core.hook
 
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
-import org.sys.config.core.dexkit.FindClassFunc
-import org.sys.config.core.dexkit.DexBridge
-import org.sys.config.core.dexkit.FindFieldFunc
-import org.sys.config.core.dexkit.FindMethodFunc
-import org.sys.config.core.dexkit.FindMethodListFunc
-import org.sys.config.core.utils.Logger
+import com.spotify.music.core.dexkit.FindClassFunc
+import com.spotify.music.core.dexkit.DexBridge
+import com.spotify.music.core.dexkit.FindFieldFunc
+import com.spotify.music.core.dexkit.FindMethodFunc
+import com.spotify.music.core.dexkit.FindMethodListFunc
+import com.spotify.music.core.utils.Logger
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers

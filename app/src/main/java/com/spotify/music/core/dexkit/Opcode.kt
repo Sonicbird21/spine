@@ -1,4 +1,4 @@
-package org.sys.config.core.dexkit
+package com.spotify.music.core.dexkit
 
 /**
  * Dalvik/DEX opcode representations for DexKit matching.

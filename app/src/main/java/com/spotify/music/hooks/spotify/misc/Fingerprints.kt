@@ -1,12 +1,12 @@
-package org.sys.config.hooks.spotify.misc
+package com.spotify.music.hooks.spotify.misc
 
-import org.sys.config.core.dexkit.AccessFlags
-import org.sys.config.core.dexkit.Opcode
-import org.sys.config.core.dexkit.findClassDirect
-import org.sys.config.core.dexkit.findFieldDirect
-import org.sys.config.core.dexkit.findMethodDirect
-import org.sys.config.core.dexkit.fingerprint
-import org.sys.config.core.dexkit.strings
+import com.spotify.music.core.dexkit.AccessFlags
+import com.spotify.music.core.dexkit.Opcode
+import com.spotify.music.core.dexkit.findClassDirect
+import com.spotify.music.core.dexkit.findFieldDirect
+import com.spotify.music.core.dexkit.findMethodDirect
+import com.spotify.music.core.dexkit.fingerprint
+import com.spotify.music.core.dexkit.strings
 import org.luckypray.dexkit.query.enums.StringMatchType
 import org.luckypray.dexkit.query.enums.UsingType
 import org.luckypray.dexkit.result.MethodData

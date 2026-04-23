@@ -1,4 +1,4 @@
-package org.sys.config.core.dexkit
+package com.spotify.music.core.dexkit
 
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.DexKitCacheBridge

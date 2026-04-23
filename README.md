@@ -27,7 +27,7 @@ By default, each build uses a randomized applicationId so the installed package 
 
 Environment flags:
 - SYS_CONFIG_RANDOM_APP_ID=true|false (default: true)
-- SYS_CONFIG_BASE_APPLICATION_ID=com.example.base (default: org.sys.config)
+- SYS_CONFIG_BASE_APPLICATION_ID=com.example.base (default: com.spotify.music)
 
 ### Install
 

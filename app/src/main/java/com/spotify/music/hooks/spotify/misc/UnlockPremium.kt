@@ -1,9 +1,9 @@
-package org.sys.config.hooks.spotify.misc
+package com.spotify.music.hooks.spotify.misc
 
-import org.sys.config.core.hook.BaseHook
-import org.sys.config.core.utils.Logger
-import org.sys.config.core.utils.callMethod
-import org.sys.config.hooks.spotify.patches.UnlockPremiumPatch
+import com.spotify.music.core.hook.BaseHook
+import com.spotify.music.core.utils.Logger
+import com.spotify.music.core.utils.callMethod
+import com.spotify.music.hooks.spotify.patches.UnlockPremiumPatch
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers

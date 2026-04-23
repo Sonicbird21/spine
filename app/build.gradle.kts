@@ -14,21 +14,21 @@ fun randomApplicationId(baseId: String): String {
     return "$baseId.r$randomSuffix"
 }
 
-val baseApplicationId = envOrNull("SYS_CONFIG_BASE_APPLICATION_ID") ?: "org.sys.config"
+val baseApplicationId = envOrNull("SYS_CONFIG_BASE_APPLICATION_ID") ?: "com.spotify.music"
 val randomizeApplicationId = envOrNull("SYS_CONFIG_RANDOM_APP_ID")?.toBooleanStrictOrNull() ?: true
 val resolvedApplicationId = if (randomizeApplicationId) randomApplicationId(baseApplicationId) else baseApplicationId
 
-println("[SysConfig] Using applicationId: $resolvedApplicationId")
+println("[Sp1ne] Using applicationId: $resolvedApplicationId")
 
 android {
-    namespace = "org.sys.config"
+    namespace = "com.spotify.music"
     compileSdk = 36
 
     defaultConfig {
         applicationId = resolvedApplicationId
         minSdk = 27
         versionCode = 1
-        versionName = "0.2.0"
+        versionName = "test"
     }
 
     buildFeatures {

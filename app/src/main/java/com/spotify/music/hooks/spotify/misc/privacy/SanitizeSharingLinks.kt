@@ -1,9 +1,9 @@
-package org.sys.config.hooks.spotify.misc.privacy
+package com.spotify.music.hooks.spotify.misc.privacy
 
 import android.content.ClipData
-import org.sys.config.core.hook.BaseHook
-import org.sys.config.core.hook.scopedHook
-import org.sys.config.hooks.spotify.patches.SanitizeSharingLinksPatch
+import com.spotify.music.core.hook.BaseHook
+import com.spotify.music.core.hook.scopedHook
+import com.spotify.music.hooks.spotify.patches.SanitizeSharingLinksPatch
 import de.robv.android.xposed.XposedHelpers
 
 fun BaseHook.sanitizeSharingLinks() {
