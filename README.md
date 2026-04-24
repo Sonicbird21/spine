@@ -1,6 +1,8 @@
-# Project SysConfig
+# Project Spine
 
 Xposed/DexKit module for Spotify modifications.
+
+IMPORTANT NOTE: Do not close the app, as it will log out. If you keep it open it will work for a while.
 
 ## Quick Start
 
@@ -27,7 +29,7 @@ By default, each build uses a randomized applicationId so the installed package 
 
 Environment flags:
 - SYS_CONFIG_RANDOM_APP_ID=true|false (default: true)
-- SYS_CONFIG_BASE_APPLICATION_ID=com.example.base (default: org.sys.config)
+- SYS_CONFIG_BASE_APPLICATION_ID=com.example.base (default: com.spotify.music)
 
 ### Install
 
