@@ -31,6 +31,15 @@ typealias HookFunction = KFunction0<Unit>
 
 abstract class BaseHook(private val app: Application, protected val lpparam: LoadPackageParam) {
     abstract val hooks: Array<HookFunction>
+
+    companion object {
+        lateinit var instance: BaseHook
+            private set
+    }
+
+    init {
+    instance = this
+    }
     
     val classLoader: ClassLoader
         get() = lpparam.classLoader

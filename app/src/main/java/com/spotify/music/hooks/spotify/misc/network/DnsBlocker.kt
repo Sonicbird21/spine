@@ -1,4 +1,4 @@
-package com.spotify.music.hooks.spotify.misc.dns
+package com.spotify.music.hooks.spotify.misc.network
 
 internal object DnsBlocker {
     fun shouldBlock(hostname: String?): Boolean {

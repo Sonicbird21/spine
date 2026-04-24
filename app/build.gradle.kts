@@ -28,7 +28,7 @@ android {
         applicationId = resolvedApplicationId
         minSdk = 27
         versionCode = 1
-        versionName = "test"
+        versionName = "tomato"
     }
 
     buildFeatures {

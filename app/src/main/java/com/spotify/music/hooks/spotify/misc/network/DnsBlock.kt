@@ -1,4 +1,4 @@
-package com.spotify.music.hooks.spotify.misc.dns
+package com.spotify.music.hooks.spotify.misc.network
 
 import com.spotify.music.core.utils.Logger
 import de.robv.android.xposed.XC_MethodHook

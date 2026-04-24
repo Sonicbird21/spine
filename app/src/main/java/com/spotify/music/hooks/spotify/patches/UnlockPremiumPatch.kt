@@ -11,9 +11,19 @@ object UnlockPremiumPatch {
     )
 
     private val premiumOverrides = listOf(
-        OverrideAttribute("ads", false), // !! true = no kick 
+     //   OverrideAttribute("ab-ad-player-targeting", false),
+     //   OverrideAttribute("ad-session-persistence", false),
+     //   OverrideAttribute("ad-formats-preroll-video", false),
+     //   OverrideAttribute("app-developer", 1L),
+     //   OverrideAttribute("catalogue", "premium"),
+        OverrideAttribute("ads", false),
         OverrideAttribute("player-license", "premium"),
+     //   OverrideAttribute("name", "Spotify Premium"),
+     //   OverrideAttribute("com.spotify.madprops.use.ucs.product.state", false),
+        OverrideAttribute("com.spotify.madprops.delivered.by.ucs", false),
+     //   OverrideAttribute("financial-product", "pr:premium,tc:0"),
      //   OverrideAttribute("player-license-v2", "premium", isExpected = false),
+     //   OverrideAttribute("employee-free-opt-in", 1L),
         OverrideAttribute("shuffle", false),
         OverrideAttribute("on-demand", true),
         OverrideAttribute("streaming", true),
@@ -23,6 +33,7 @@ object UnlockPremiumPatch {
         OverrideAttribute("type", "premium"),
         OverrideAttribute("can_use_superbird", true, isExpected = false),
         OverrideAttribute("tablet-free", false, isExpected = false),
+
     )
 
     private var homeSectionIds: List<Int>? = null

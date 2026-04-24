@@ -7,7 +7,8 @@ import com.spotify.music.core.utils.Logger
 import com.spotify.music.hooks.spotify.misc.privacy.sanitizeSharingLinks
 import com.spotify.music.hooks.spotify.misc.unlockPremium
 import com.spotify.music.hooks.spotify.misc.widgets.fixThirdPartyLaunchersWidgets
-import com.spotify.music.hooks.spotify.misc.dns.dnsBlock
+import com.spotify.music.hooks.spotify.misc.network.dnsBlock
+import com.spotify.music.hooks.spotify.misc.network.blockTracking
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
 
 class SpotifyHook(app: Application, lpparam: LoadPackageParam) : BaseHook(app, lpparam) {
@@ -16,6 +17,7 @@ class SpotifyHook(app: Application, lpparam: LoadPackageParam) : BaseHook(app, l
         ::sanitizeSharingLinks,
         ::fixThirdPartyLaunchersWidgets,
         ::dnsBlock,
+        ::blockTracking,
     )
 
     init {

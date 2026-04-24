@@ -20,6 +20,7 @@ fun BaseHook.unlockPremium() {
         val field = ::attributesMapField.field
         before { param ->
             val attributes = field.get(param.thisObject) as? Map<String, *> ?: return@before
+
             UnlockPremiumPatch.overrideAttributes(attributes)
         }
     }

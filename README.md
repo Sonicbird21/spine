@@ -1,6 +1,8 @@
-# Project SysConfig
+# Project Spine
 
 Xposed/DexKit module for Spotify modifications.
+
+IMPORTANT NOTE: Do not close the app, as it will log out. If you keep it open it will work for a while.
 
 ## Quick Start
 
