@@ -1,8 +1,7 @@
-package com.spotify.music.hooks.spotify.misc.network
+package com.spotify.music.hooks.spotify.features.network.blockdealer
 
-internal object DnsBlocker {
+object DealerHostnamePatch {
     fun shouldBlock(hostname: String?): Boolean {
-
         if (hostname.isNullOrBlank()) return false
         val host = hostname.trimEnd('.').lowercase()
 

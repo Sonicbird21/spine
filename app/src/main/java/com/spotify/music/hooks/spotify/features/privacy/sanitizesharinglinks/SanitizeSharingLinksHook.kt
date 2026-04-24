@@ -1,4 +1,4 @@
-package com.spotify.music.hooks.spotify.misc.privacy
+package com.spotify.music.hooks.spotify.features.privacy.sanitizesharinglinks
 
 import android.content.ClipData
 import com.spotify.music.core.hook.BaseHook
@@ -7,7 +7,7 @@ import com.spotify.music.hooks.spotify.patches.SanitizeSharingLinksPatch
 import de.robv.android.xposed.XposedHelpers
 
 fun BaseHook.sanitizeSharingLinks() {
-    ::shareCopyUrlFingerprint.hookMethod(
+    ::ShareCopyUrlMethodFingerprint.hookMethod(
         scopedHook(
             XposedHelpers.findMethodExact(
                 ClipData::class.java.name,

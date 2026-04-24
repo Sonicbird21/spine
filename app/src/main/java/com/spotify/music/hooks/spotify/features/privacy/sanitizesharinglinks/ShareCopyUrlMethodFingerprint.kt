@@ -1,9 +1,9 @@
-package com.spotify.music.hooks.spotify.misc.privacy
+package com.spotify.music.hooks.spotify.features.privacy.sanitizesharinglinks
 
 import com.spotify.music.core.dexkit.findMethodDirect
 import com.spotify.music.core.dexkit.fingerprint
 
-val shareCopyUrlFingerprint = findMethodDirect {
+val ShareCopyUrlMethodFingerprint = findMethodDirect {
     runCatching {
         fingerprint {
             returns("Ljava/lang/Object;")

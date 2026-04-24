@@ -21,6 +21,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SysConfig"
+rootProject.name = "Sp1ne"
 include(":app")
 include(":stub")

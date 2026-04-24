@@ -8,7 +8,7 @@ import de.robv.android.xposed.XposedBridge
  * Automatically tags all logs with the module name for easy filtering.
  */
 object Logger {
-    private const val TAG = "SysConfig"
+    private const val TAG = "Spine"
 
     fun debug(message: String) {
         log("D", message)

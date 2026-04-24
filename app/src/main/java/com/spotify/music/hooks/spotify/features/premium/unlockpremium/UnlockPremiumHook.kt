@@ -1,31 +1,30 @@
-package com.spotify.music.hooks.spotify.misc
+package com.spotify.music.hooks.spotify.features.premium.unlockpremium
 
 import com.spotify.music.core.hook.BaseHook
-import com.spotify.music.core.utils.Logger
 import com.spotify.music.core.utils.callMethod
+import com.spotify.music.hooks.spotify.features.premium.unlockpremium.fingerprints.*
 import com.spotify.music.hooks.spotify.patches.UnlockPremiumPatch
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
-import java.util.ArrayList
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.Method
+import java.util.ArrayList
 import org.luckypray.dexkit.wrap.DexField
 import org.luckypray.dexkit.wrap.DexMethod
 
 @Suppress("UNCHECKED_CAST")
 fun BaseHook.unlockPremium() {
-    ::productStateProtoFingerprint.hookMethod {
-        val field = ::attributesMapField.field
+    ::productStateMethodFingerprint.hookMethod {
+        val field = ::productStateAttributesMapFieldFingerprint.field
         before { param ->
             val attributes = field.get(param.thisObject) as? Map<String, *> ?: return@before
-
             UnlockPremiumPatch.overrideAttributes(attributes)
         }
     }
 
-    ::buildQueryParametersFingerprint.hookMethod {
+    ::queryParametersBuildMethodFingerprint.hookMethod {
         after { param ->
             val result = param.result
             val field = "checkDeviceCapability"
@@ -39,7 +38,7 @@ fun BaseHook.unlockPremium() {
         }
     }
 
-    ::contextFromJsonFingerprint.hookMethod {
+    ::contextFromJsonMethodFingerprint.hookMethod {
         fun removeStationString(field: Field, obj: Any) {
             field.isAccessible = true
             val original = field.get(obj) as? String ?: return
@@ -65,7 +64,7 @@ fun BaseHook.unlockPremium() {
         },
     )
 
-    val contextMenuViewModelClazz = ::contextMenuViewModelClass.clazz
+    val contextMenuViewModelClazz = ::contextMenuViewModelClassFingerprint.clazz
     var runtimeFallbackUpsellField: Field? = null
 
     fun looksLikeViewModel(value: Any): Boolean {
@@ -132,7 +131,6 @@ fun BaseHook.unlockPremium() {
                 if (resolvedField != null) {
                     runCatching { resolvedField.get(vm) == true }.getOrDefault(false)
                 } else {
-                    // Last-resort fallback when field layout changes: rely on generated ViewModel.toString labels.
                     vm.toString().contains("isPremiumUpsell=true")
                 }
             } != true
@@ -182,12 +180,12 @@ fun BaseHook.unlockPremium() {
         )
     }
 
-    ::homeStructureGetSectionsFingerprint.hookMethod {
+    ::homeStructureGetSectionsMethodFingerprint.hookMethod {
         after { param ->
             val sections = param.result
             runCatching {
                 var clazz: Class<*>? = sections.javaClass
-                var boolField: java.lang.reflect.Field? = null
+                var boolField: Field? = null
                 while (clazz != null) {
                     boolField = clazz.declaredFields.firstOrNull { it.type == Boolean::class.java }
                     if (boolField != null) break
@@ -202,12 +200,12 @@ fun BaseHook.unlockPremium() {
         }
     }
 
-    ::browseStructureGetSectionsFingerprint.hookMethod {
+    ::browseStructureGetSectionsMethodFingerprint.hookMethod {
         after { param ->
             val sections = param.result
             runCatching {
                 var clazz: Class<*>? = sections.javaClass
-                var boolField: java.lang.reflect.Field? = null
+                var boolField: Field? = null
                 while (clazz != null) {
                     boolField = clazz.declaredFields.firstOrNull { it.type == Boolean::class.java }
                     if (boolField != null) break
@@ -222,13 +220,12 @@ fun BaseHook.unlockPremium() {
         }
     }
 
-
-    ::npvScrollStructureGetSectionsFingerprint.hookMethod {
+    ::npvScrollStructureGetSectionsMethodFingerprint.hookMethod {
         after { param ->
             val sections = param.result
             runCatching {
                 var clazz: Class<*>? = sections.javaClass
-                var boolField: java.lang.reflect.Field? = null
+                var boolField: Field? = null
                 while (clazz != null) {
                     boolField = clazz.declaredFields.firstOrNull { it.type == Boolean::class.java }
                     if (boolField != null) break
@@ -242,8 +239,6 @@ fun BaseHook.unlockPremium() {
             UnlockPremiumPatch.removeNpvSections(param.result as MutableList<*>)
         }
     }
-
-
 
     val replaceFetchRequestSingleWithError = object : XC_MethodHook() {
         val justMethod =
@@ -260,6 +255,6 @@ fun BaseHook.unlockPremium() {
         }
     }
 
-    ::pendragonJsonFetchMessageRequestFingerprint.hookMethod(replaceFetchRequestSingleWithError)
-    ::pendragonJsonFetchMessageListRequestFingerprint.hookMethod(replaceFetchRequestSingleWithError)
+    ::pendragonFetchMessageRequestApplyMethodFingerprint.hookMethod(replaceFetchRequestSingleWithError)
+    ::pendragonFetchMessageListRequestApplyMethodFingerprint.hookMethod(replaceFetchRequestSingleWithError)
 }

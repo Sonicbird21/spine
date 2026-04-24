@@ -3,6 +3,9 @@ package com.spotify.music.core.hook
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
+import com.spotify.music.core.feature.FeatureContext
+import com.spotify.music.core.feature.FeatureRunner
+import com.spotify.music.core.feature.HookFeature
 import com.spotify.music.core.dexkit.FindClassFunc
 import com.spotify.music.core.dexkit.DexBridge
 import com.spotify.music.core.dexkit.FindFieldFunc
@@ -31,15 +34,7 @@ typealias HookFunction = KFunction0<Unit>
 
 abstract class BaseHook(private val app: Application, protected val lpparam: LoadPackageParam) {
     abstract val hooks: Array<HookFunction>
-
-    companion object {
-        lateinit var instance: BaseHook
-            private set
-    }
-
-    init {
-    instance = this
-    }
+    open val features: List<HookFeature> = emptyList()
     
     val classLoader: ClassLoader
         get() = lpparam.classLoader
@@ -50,6 +45,8 @@ abstract class BaseHook(private val app: Application, protected val lpparam: Loa
     private val cache = app.getSharedPreferences("sys_config_dexkit", Context.MODE_PRIVATE)
     private val applied = mutableSetOf<HookFunction>()
     private val failed = mutableListOf<HookFunction>()
+    private val appliedFeatures = mutableSetOf<String>()
+    private val failedFeatures = mutableMapOf<String, Throwable>()
 
     private val dexkit by lazy {
         System.loadLibrary("dexkit")
@@ -110,6 +107,16 @@ abstract class BaseHook(private val app: Application, protected val lpparam: Loa
             }.onFailure { err ->
                 failed.add(hook)
                 XposedBridge.log(err)
+            }
+        }
+
+        if (features.isNotEmpty()) {
+            val runner = FeatureRunner(features)
+            val report = runner.installAll(FeatureContext(this))
+            appliedFeatures += report.applied
+            failedFeatures += report.failed
+            report.failed.forEach { (featureId, err) ->
+                Logger.error("Feature $featureId failed", err)
             }
         }
     }
