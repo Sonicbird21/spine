@@ -1,6 +1,7 @@
 .gradle/
 .kotlin/
 .vscode/
+.cursor/
 .idea/
 *.iml
 local.properties

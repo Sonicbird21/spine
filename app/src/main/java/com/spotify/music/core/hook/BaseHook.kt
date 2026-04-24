@@ -115,6 +115,10 @@ abstract class BaseHook(private val app: Application, protected val lpparam: Loa
             val report = runner.installAll(FeatureContext(this))
             appliedFeatures += report.applied
             failedFeatures += report.failed
+            Logger.info("Features applied: ${report.applied.joinToString(", ")}")
+            if (report.failed.isNotEmpty()) {
+                Logger.warn("Features failed: ${report.failed.keys.joinToString(", ")}")
+            }
             report.failed.forEach { (featureId, err) ->
                 Logger.error("Feature $featureId failed", err)
             }

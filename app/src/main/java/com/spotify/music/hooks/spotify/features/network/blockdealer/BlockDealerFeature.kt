@@ -7,6 +7,6 @@ class BlockDealerFeature : HookFeature {
     override val id: String = "BlockDealer"
 
     override fun install(context: FeatureContext) {
-        DnsResolutionHook().install(context)
+        DealerPubSubHook().install(context)
     }
 }
