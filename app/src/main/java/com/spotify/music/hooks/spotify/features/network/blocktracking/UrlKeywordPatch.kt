@@ -1,6 +1,6 @@
 package com.spotify.music.hooks.spotify.features.network.blocktracking
 
-import com.spotify.music.hooks.spotify.features.network.session.SessionState
+import com.spotify.music.hooks.spotify.features.network.session.LoginResponseCache
 
 object UrlKeywordPatch {
     fun shouldBlock(url: String, keywords: List<String>): Boolean {
@@ -8,7 +8,7 @@ object UrlKeywordPatch {
         val isLoginEndpoint = url.contains("login5.spotify.com/v3/login", ignoreCase = true)
 
         if (isLoginEndpoint) {
-            return SessionState.isAuthenticatedSession
+            return LoginResponseCache.isCached()
         }
 
         return keywords.any { keyword ->
