@@ -12,6 +12,11 @@ import java.util.WeakHashMap
 class HttpSendHook(
     private val blockedKeywords: List<String>,
 ) {
+    companion object {
+        @JvmStatic
+        var isLogin5ReplayEnabled: Boolean = false
+    }
+
     fun install(context: FeatureContext) {
         val httpConnectionClass = context.classLoader.loadClass("com.spotify.core.http.NativeHttpConnection")
         val httpRequestClass = context.classLoader.loadClass("com.spotify.core.http.HttpRequest")
@@ -40,8 +45,9 @@ class HttpSendHook(
                     val url = urlField.get(request) as? String ?: return
                     val connection = param.thisObject ?: return
                     urlByConnection[connection] = url
+                    val isLoginEndpoint = url.contains("login5.spotify.com/v3/login", ignoreCase = true)
 
-                    if (url.contains("login5.spotify.com/v3/login", ignoreCase = true)) {
+                    if (isLogin5ReplayEnabled && isLoginEndpoint) {
                         val cached = LoginResponseCache.getCachedResponse()
                         if (cached != null) {
                             Logger.info("[BlockTracking] Replaying cached login response body.")
@@ -58,6 +64,9 @@ class HttpSendHook(
                             return
                         }
                     }
+
+                    // Never block login5 when replay is disabled.
+                    if (isLoginEndpoint && !isLogin5ReplayEnabled) return
 
                     if (url.contains("ad-logic/state/config", ignoreCase = true)) {
                         SessionState.isAuthenticatedSession = true

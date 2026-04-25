@@ -17,7 +17,7 @@ object UnlockPremiumPatch {
      //   OverrideAttribute("app-developer", 1L),
      //   OverrideAttribute("catalogue", "premium"),
         OverrideAttribute("ads", false),
-        OverrideAttribute("key-caching-max-offline-seconds", 10800L),
+     //   OverrideAttribute("key-caching-max-offline-seconds", 10800L),
         OverrideAttribute("player-license", "premium"),
      //   OverrideAttribute("name", "Spotify Premium"),
      //   OverrideAttribute("com.spotify.madprops.use.ucs.product.state", false),
