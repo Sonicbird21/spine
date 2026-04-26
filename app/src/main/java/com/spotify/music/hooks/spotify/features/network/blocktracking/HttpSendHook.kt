@@ -11,12 +11,8 @@ import java.util.WeakHashMap
 
 class HttpSendHook(
     private val blockedKeywords: List<String>,
+    private val login5HandlingMode: Login5HandlingMode,
 ) {
-    companion object {
-        @JvmStatic
-        var isLogin5ReplayEnabled: Boolean = false
-    }
-
     fun install(context: FeatureContext) {
         val httpConnectionClass = context.classLoader.loadClass("com.spotify.core.http.NativeHttpConnection")
         val httpRequestClass = context.classLoader.loadClass("com.spotify.core.http.HttpRequest")
@@ -47,31 +43,47 @@ class HttpSendHook(
                     urlByConnection[connection] = url
                     val isLoginEndpoint = url.contains("login5.spotify.com/v3/login", ignoreCase = true)
 
-                    if (isLogin5ReplayEnabled && isLoginEndpoint) {
-                        val cached = LoginResponseCache.getCachedResponse()
-                        if (cached != null) {
-                            Logger.info("[BlockTracking] Replaying cached login response body.")
-                            val replayResponse = responseCtor.newInstance(cached.status, cached.url, cached.headers)
-                            isReplaying.set(true)
-                            try {
-                                onHeadersMethod.invoke(connection, replayResponse)
-                                onBytesAvailableMethod.invoke(connection, cached.body, cached.body.size)
-                                onCompleteMethod.invoke(connection)
-                            } finally {
-                                isReplaying.set(false)
+                    if (isLoginEndpoint) {
+                        when (login5HandlingMode) {
+                            Login5HandlingMode.REPLAY_CACHED_RESPONSE -> {
+                                val cached = LoginResponseCache.getCachedResponse()
+                                if (cached != null) {
+                                    Logger.info("[BlockTracking] Replaying cached login response body.")
+                                    val replayResponse = responseCtor.newInstance(cached.status, cached.url, cached.headers)
+                                    isReplaying.set(true)
+                                    try {
+                                        onHeadersMethod.invoke(connection, replayResponse)
+                                        onBytesAvailableMethod.invoke(connection, cached.body, cached.body.size)
+                                        onCompleteMethod.invoke(connection)
+                                    } finally {
+                                        isReplaying.set(false)
+                                    }
+                                    param.result = null
+                                    return
+                                }
+
+                                // No cache available yet, let login request pass through.
+                                return
                             }
-                            param.result = null
-                            return
+                            Login5HandlingMode.BLOCK_WHEN_AUTHENTICATED -> {
+                                if (!SessionState.isAuthenticatedSession) {
+                                    // Allow login requests until session is authenticated.
+                                    return
+                                }
+
+                                Logger.info("[BlockTracking] blocked login5 request after authentication: $url")
+                                param.result = null
+                                return
+                            }
                         }
                     }
-
-                    // Never block login5 when replay is disabled.
-                    if (isLoginEndpoint && !isLogin5ReplayEnabled) return
 
                     if (url.contains("ad-logic/state/config", ignoreCase = true)) {
                         SessionState.isAuthenticatedSession = true
                         Logger.info("[Auth] Spotify authenticated.")
                     }
+
+                    if (!SessionState.isAuthenticatedSession) return
 
                     if (!UrlKeywordPatch.shouldBlock(url, blockedKeywords)) return
 
