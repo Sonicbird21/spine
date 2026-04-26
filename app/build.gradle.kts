@@ -122,6 +122,7 @@ dependencies {
     implementation(libs.annotation)
     implementation(libs.dexkit)
     implementation(libs.flatbuffers.java)
+    implementation(libs.nanohttpd)
     compileOnly(libs.xposed)
     compileOnly(project(":stub"))
 }

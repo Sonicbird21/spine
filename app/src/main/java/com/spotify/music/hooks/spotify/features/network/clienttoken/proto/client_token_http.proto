@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package spotify.clienttoken.http.v0;
+
+option java_package = "spotify.clienttoken.http.v0";
+option java_multiple_files = true;
+
+import "connectivity.proto";
+
+message ClientTokenRequest {
+  .spotify.clienttoken.http.v0.ClientTokenRequestType request_type = 1;
+  oneof request {
+    .spotify.clienttoken.http.v0.ClientDataRequest client_data = 2;
+    .spotify.clienttoken.http.v0.ChallengeAnswersRequest challenge_answers = 3;
+  }
+}
+
+message ClientDataRequest {
+  string client_version = 1;
+  string client_id = 2;
+  string current_token = 5;
+  oneof data {
+    .spotify.clienttoken.data.v0.ConnectivitySdkData connectivity_sdk_data = 3;
+  }
+}
+
+message ChallengeAnswersRequest {
+  string state = 1;
+  repeated .spotify.clienttoken.http.v0.ChallengeAnswer answers = 2;
+}
+
+message ClientTokenResponse {
+  .spotify.clienttoken.http.v0.ClientTokenResponseType response_type = 1;
+  oneof response {
+    .spotify.clienttoken.http.v0.GrantedTokenResponse granted_token = 2;
+    .spotify.clienttoken.http.v0.ChallengesResponse challenges = 3;
+  }
+}
+
+message TokenDomain {
+  string domain = 1;
+}
+
+message GrantedTokenResponse {
+  string token = 1;
+  int32 expires_after_seconds = 2;
+  int32 refresh_after_seconds = 3;
+  repeated .spotify.clienttoken.http.v0.TokenDomain domains = 4;
+}
+
+message ChallengesResponse {
+  string state = 1;
+  repeated .spotify.clienttoken.http.v0.Challenge challenges = 2;
+}
+
+message ClientSecretParameters {
+  string salt = 1;
+}
+
+message EvaluateJSParameters {
+  string code = 1;
+  repeated string libraries = 2;
+}
+
+message HashCashParameters {
+  int32 length = 1;
+  string prefix = 2;
+}
+
+message Challenge {
+  .spotify.clienttoken.http.v0.ChallengeType type = 1;
+  oneof parameters {
+    .spotify.clienttoken.http.v0.ClientSecretParameters client_secret_parameters = 2;
+    .spotify.clienttoken.http.v0.EvaluateJSParameters evaluate_js_parameters = 3;
+    .spotify.clienttoken.http.v0.HashCashParameters evaluate_hashcash_parameters = 4;
+  }
+}
+
+message ClientSecretHMACAnswer {
+  string hmac = 1;
+}
+
+message EvaluateJSAnswer {
+  string result = 1;
+}
+
+message HashCashAnswer {
+  string suffix = 1;
+}
+
+message ChallengeAnswer {
+  .spotify.clienttoken.http.v0.ChallengeType ChallengeType = 1;
+  oneof answer {
+    .spotify.clienttoken.http.v0.ClientSecretHMACAnswer client_secret = 2;
+    .spotify.clienttoken.http.v0.EvaluateJSAnswer evaluate_js = 3;
+    .spotify.clienttoken.http.v0.HashCashAnswer hash_cash = 4;
+  }
+}
+
+message ClientTokenBadRequest {
+  string message = 1;
+}
+
+enum ClientTokenRequestType {
+  REQUEST_UNKNOWN = 0;
+  REQUEST_CLIENT_DATA_REQUEST = 1;
+  REQUEST_CHALLENGE_ANSWERS_REQUEST = 2;
+}
+
+enum ClientTokenResponseType {
+  RESPONSE_UNKNOWN = 0;
+  RESPONSE_GRANTED_TOKEN_RESPONSE = 1;
+  RESPONSE_CHALLENGES_RESPONSE = 2;
+}
+
+enum ChallengeType {
+  CHALLENGE_UNKNOWN = 0;
+  CHALLENGE_CLIENT_SECRET_HMAC = 1;
+  CHALLENGE_EVALUATE_JS = 2;
+  CHALLENGE_HASH_CASH = 3;
+}
+

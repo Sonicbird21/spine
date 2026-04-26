@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package spotify.clienttoken.data.v0;
+
+option java_package = "spotify.clienttoken.data.v0";
+option java_multiple_files = true;
+
+message ConnectivitySdkData {
+  .spotify.clienttoken.data.v0.PlatformSpecificData platform_specific_data = 1;
+  string device_id = 2;
+  .spotify.clienttoken.data.v0.ApplicationSpecificData application_specific_data = 3;
+}
+
+message PlatformSpecificData {
+  oneof data {
+    .spotify.clienttoken.data.v0.NativeAndroidData android = 1;
+    .spotify.clienttoken.data.v0.NativeIOSData ios = 2;
+    .spotify.clienttoken.data.v0.NativeDesktopMacOSData mac = 3;
+    .spotify.clienttoken.data.v0.NativeDesktopWindowsData win = 4;
+    .spotify.clienttoken.data.v0.NativeDesktopLinuxData linux = 5;
+    .spotify.clienttoken.data.v0.NativeTVOSData tvos = 6;
+  }
+}
+
+message ApplicationSpecificData {
+  oneof data {
+    .spotify.clienttoken.data.v0.NativeCoreSpeakerData core_speaker = 1;
+  }
+}
+
+message NativeAndroidData {
+  .spotify.clienttoken.data.v0.AndroidScreen screen_dimensions = 1;
+  string os_version = 2;
+  uint32 api_level = 3;
+  string name = 4;
+  string model = 5;
+  string brand = 6;
+  string manufacturer = 7;
+  uint32 volume_steps = 8;
+  string device_data_ext = 9;
+  string installer_name = 10;
+}
+
+message AndroidScreen {
+  int32 width = 1;
+  int32 height = 2;
+  int32 smallest_screen_width_dp = 3;
+  int32 screen_density_current = 4;
+  int32 screen_density_stable = 5;
+}
+
+message NativeIOSData {
+  int32 user_interface_idiom = 1;
+  bool target_iphone_simulator = 2;
+  string hw_machine = 3;
+  string system_version = 4;
+  string simulator_model_identifier = 5;
+}
+
+message NativeDesktopMacOSData {
+  string system_version = 1;
+  int64 system_version_major = 2;
+  int64 system_version_minor = 3;
+  int64 system_version_patch = 4;
+  string hw_model = 5;
+  int32 cpu_type = 6;
+  int32 cpu_subtype = 7;
+  string compiled_cpu_type = 8;
+}
+
+message NativeDesktopWindowsData {
+  uint64 system_version_major = 1;
+  uint64 system_version_minor = 2;
+  uint64 system_version_build = 3;
+  uint32 platform_id = 4;
+  uint32 processor_architecture = 5;
+  uint32 native_processor_architecture = 6;
+  uint32 process_machine = 7;
+  uint32 native_machine = 8;
+  bool is_server = 9;
+  bool is_windows_store = 10;
+  bool is_windows_s_mode = 11;
+  bool is_windows_x_mode = 12;
+  int32 server_r2_build_number = 13;
+  string wine_version = 14;
+}
+
+message NativeDesktopLinuxData {
+  string system_name = 1;
+  string system_release = 2;
+  string system_version = 3;
+  string hardware = 4;
+}
+
+message NativeTVOSData {
+  int32 user_interface_idiom = 1;
+  bool target_appletv_simulator = 2;
+  string hw_machine = 3;
+  string system_version = 4;
+  string simulator_model_identifier = 5;
+}
+
+message NativeCoreSpeakerData {
+  string brand_name = 1;
+  string model_name = 2;
+  string device_manufacturer = 3;
+  string platform_name = 4;
+  string systems_integrator = 5;
+  string sdk_version = 6;
+}
+

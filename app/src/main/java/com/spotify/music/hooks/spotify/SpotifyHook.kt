@@ -5,6 +5,7 @@ import com.spotify.music.core.feature.HookFeature
 import com.spotify.music.core.hook.BaseHook
 import com.spotify.music.core.hook.HookFunction
 import com.spotify.music.core.utils.Logger
+import com.spotify.music.hooks.spotify.features.network.clienttoken.ClientTokenFeature
 import com.spotify.music.hooks.spotify.features.logging.internal.InternalLoggerFeature
 import com.spotify.music.hooks.spotify.features.network.blockdealer.BlockDealerFeature
 import com.spotify.music.hooks.spotify.features.network.blocktracking.BlockTrackingFeature
@@ -17,6 +18,7 @@ class SpotifyHook(app: Application, lpparam: LoadPackageParam) : BaseHook(app, l
     override val hooks: Array<HookFunction> = emptyArray()
 
     override val features: List<HookFeature> = listOf(
+        ClientTokenFeature(),
         UnlockPremiumFeature(),
         SanitizeSharingLinksFeature(),
         FixWidgetsFeature(),
