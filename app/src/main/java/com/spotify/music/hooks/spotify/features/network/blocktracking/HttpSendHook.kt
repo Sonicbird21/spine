@@ -8,6 +8,9 @@ import com.spotify.music.hooks.spotify.features.network.session.SessionState
 import com.spotify.music.hooks.spotify.features.network.session.LoginResponseCache
 import java.util.Collections
 import java.util.WeakHashMap
+import java.lang.reflect.Field
+import java.lang.reflect.Method
+import java.io.IOException
 
 class HttpSendHook(
     private val blockedKeywords: List<String>,
@@ -16,11 +19,13 @@ class HttpSendHook(
     fun install(context: FeatureContext) {
         val httpConnectionClass = context.classLoader.loadClass("com.spotify.core.http.NativeHttpConnection")
         val httpRequestClass = context.classLoader.loadClass("com.spotify.core.http.HttpRequest")
+        val httpOptionsClass = context.classLoader.loadClass("com.spotify.core.http.HttpOptions")
         val httpResponseClass = context.classLoader.loadClass("com.spotify.core.http.HttpResponse")
+        val sendMethod = httpConnectionClass.getMethod("send", httpRequestClass, httpOptionsClass)
         val onHeadersMethod = httpConnectionClass.getMethod("onHeaders", httpResponseClass)
         val onBytesAvailableMethod = httpConnectionClass.getMethod("onBytesAvailable", ByteArray::class.java, Int::class.javaPrimitiveType)
         val onCompleteMethod = httpConnectionClass.getMethod("onComplete")
-        val urlField = httpRequestClass.getDeclaredField("url").apply { isAccessible = true }
+        val urlGetter = httpRequestClass.getMethod("getUrl")
         val statusGetter = httpResponseClass.getMethod("getStatus")
         val responseUrlGetter = httpResponseClass.getMethod("getUrl")
         val headersGetter = httpResponseClass.getMethod("getHeaders")
@@ -31,14 +36,13 @@ class HttpSendHook(
         val chunksByConnection = Collections.synchronizedMap(WeakHashMap<Any, MutableList<ByteArray>>())
         val isReplaying = ThreadLocal.withInitial { false }
 
-        XposedBridge.hookAllMethods(
-            httpConnectionClass,
-            "send",
+        XposedBridge.hookMethod(
+            sendMethod,
             object : XC_MethodHook() {
                 override fun beforeHookedMethod(param: MethodHookParam) {
                     if (isReplaying.get() == true) return
                     val request = param.args.getOrNull(0) ?: return
-                    val url = urlField.get(request) as? String ?: return
+                    val url = urlGetter.invoke(request) as? String ?: return
                     val connection = param.thisObject ?: return
                     urlByConnection[connection] = url
                     val isLoginEndpoint = url.contains("login5.spotify.com/v3/login", ignoreCase = true)
@@ -62,12 +66,10 @@ class HttpSendHook(
                                     return
                                 }
 
-                                // No cache available yet, let login request pass through.
                                 return
                             }
                             Login5HandlingMode.BLOCK_WHEN_AUTHENTICATED -> {
                                 if (!SessionState.isAuthenticatedSession) {
-                                    // Allow login requests until session is authenticated.
                                     return
                                 }
 
@@ -83,8 +85,6 @@ class HttpSendHook(
                         Logger.info("[Auth] Spotify authenticated.")
                     }
 
-                    if (!SessionState.isAuthenticatedSession) return
-
                     if (!UrlKeywordPatch.shouldBlock(url, blockedKeywords)) return
 
                     Logger.info("[BlockTracking] blocked request: $url")
@@ -92,6 +92,8 @@ class HttpSendHook(
                 }
             }
         )
+
+        installOkHttpLogging(context)
 
         XposedBridge.hookAllMethods(
             httpConnectionClass,
@@ -171,5 +173,211 @@ class HttpSendHook(
                 }
             }
         )
+    }
+
+    private fun installOkHttpLogging(context: FeatureContext) {
+        val requestClass = runCatching { context.classLoader.loadClass("okhttp3.Request") }.getOrElse { err ->
+            Logger.warn("[BlockTracking][OkHttp] Request class not found: ${err.message}")
+            return
+        }
+        val callClass = runCatching { context.classLoader.loadClass("okhttp3.Call") }.getOrNull()
+        val httpUrlClass = runCatching { context.classLoader.loadClass("okhttp3.HttpUrl") }.getOrNull()
+        val requestUrlMethod = resolveNoArgMethodByReturnType(requestClass, httpUrlClass)
+        val requestVerbMethod = resolveNoArgMethodByReturnType(requestClass, String::class.java)
+        val requestUrlField = resolveFieldByType(requestClass, httpUrlClass)
+        val requestVerbField = resolveFieldByType(requestClass, String::class.java)
+
+        if (requestUrlMethod == null && requestUrlField == null) {
+            Logger.warn("[BlockTracking][OkHttp] Request URL accessor not found; falling back to toString() parsing")
+        }
+        if (requestVerbMethod == null && requestVerbField == null) {
+            Logger.warn("[BlockTracking][OkHttp] Request method accessor not found; falling back to toString() parsing")
+        }
+
+        runCatching {
+            val callbackClass = context.classLoader.loadClass("okhttp3.Callback")
+            val responseClass = context.classLoader.loadClass("okhttp3.Response")
+            val realCallClass = context.classLoader.loadClass("okhttp3.internal.connection.RealCall")
+
+            val requestMethod = resolveNoArgMethodByReturnType(realCallClass, requestClass)
+                ?: throw NoSuchMethodException("RealCall request getter not found")
+
+            val executeMethods = realCallClass.declaredMethods
+                .filter { method ->
+                    method.parameterCount == 0 &&
+                        method.returnType == responseClass &&
+                        method.declaringClass == realCallClass
+                }
+                .onEach { it.isAccessible = true }
+
+            val enqueueMethods = realCallClass.declaredMethods
+                .filter { method ->
+                    method.parameterCount == 1 &&
+                        method.parameterTypes[0] == callbackClass &&
+                        method.returnType == Void.TYPE &&
+                        method.declaringClass == realCallClass
+                }
+                .onEach { it.isAccessible = true }
+
+            if (executeMethods.isEmpty()) {
+                throw NoSuchMethodException("RealCall execute method not found")
+            }
+            if (enqueueMethods.isEmpty()) {
+                throw NoSuchMethodException("RealCall enqueue method not found")
+            }
+
+            val callbackFailureMethod = resolveCallbackFailureMethod(callbackClass, callClass)
+            val cancelMethod = realCallClass.declaredMethods.firstOrNull { method ->
+                method.name == "cancel" && method.parameterCount == 0
+            }?.apply {
+                isAccessible = true
+            }
+
+            executeMethods.forEach { executeMethod ->
+                XposedBridge.hookMethod(
+                    executeMethod,
+                    object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            val (method, url) = extractRequestFromCall(
+                                call = param.thisObject,
+                                requestMethod = requestMethod,
+                                requestUrlMethod = requestUrlMethod,
+                                requestVerbMethod = requestVerbMethod,
+                                requestUrlField = requestUrlField,
+                                requestVerbField = requestVerbField,
+                            ) ?: return
+
+                            if (!UrlKeywordPatch.shouldBlock(url, blockedKeywords)) return
+
+                            runCatching { cancelMethod?.invoke(param.thisObject) }
+                            Logger.info("[BlockTracking][OkHttp] blocked request: $method $url")
+                            param.throwable = IOException("Blocked by BlockTracking")
+                        }
+                    }
+                )
+            }
+
+            enqueueMethods.forEach { enqueueMethod ->
+                XposedBridge.hookMethod(
+                    enqueueMethod,
+                    object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            val (method, url) = extractRequestFromCall(
+                                call = param.thisObject,
+                                requestMethod = requestMethod,
+                                requestUrlMethod = requestUrlMethod,
+                                requestVerbMethod = requestVerbMethod,
+                                requestUrlField = requestUrlField,
+                                requestVerbField = requestVerbField,
+                            ) ?: return
+
+                            if (!UrlKeywordPatch.shouldBlock(url, blockedKeywords)) return
+
+                            runCatching { cancelMethod?.invoke(param.thisObject) }
+                            val blockedException = IOException("Blocked by BlockTracking")
+                            val callback = param.args.getOrNull(0)
+                            val callbackInvoked = if (callback != null && callbackFailureMethod != null) {
+                                runCatching {
+                                    callbackFailureMethod.invoke(callback, param.thisObject, blockedException)
+                                }.isSuccess
+                            } else {
+                                false
+                            }
+
+                            Logger.info("[BlockTracking][OkHttp] blocked request: $method $url")
+                            if (!callbackInvoked) {
+                                param.throwable = blockedException
+                                return
+                            }
+                            param.result = null
+                        }
+                    }
+                )
+            }
+
+            Logger.info(
+                "[BlockTracking][OkHttp] RealCall hooks installed reflectively " +
+                    "(request=${requestMethod.name}, execute=${executeMethods.joinToString { it.name }}, enqueue=${enqueueMethods.joinToString { it.name }})"
+            )
+        }.onFailure { err ->
+            Logger.warn("[BlockTracking][OkHttp] RealCall hook install failed: ${err.message}")
+        }
+    }
+
+    private fun extractRequestFromCall(
+        call: Any?,
+        requestMethod: Method,
+        requestUrlMethod: Method?,
+        requestVerbMethod: Method?,
+        requestUrlField: Field?,
+        requestVerbField: Field?,
+    ): Pair<String, String>? {
+        val callObj = call ?: return null
+        val request = runCatching { requestMethod.invoke(callObj) }.getOrNull() ?: return null
+        return extractOkHttpRequestInfo(
+            request = request,
+            requestUrlMethod = requestUrlMethod,
+            requestVerbMethod = requestVerbMethod,
+            requestUrlField = requestUrlField,
+            requestVerbField = requestVerbField,
+        )
+    }
+
+    private fun extractOkHttpRequestInfo(
+        request: Any,
+        requestUrlMethod: Method?,
+        requestVerbMethod: Method?,
+        requestUrlField: Field?,
+        requestVerbField: Field?,
+    ): Pair<String, String> {
+        val methodFromMethod = requestVerbMethod?.let { runCatching { it.invoke(request) as? String }.getOrNull() }
+        val urlFromMethod = requestUrlMethod?.let { runCatching { it.invoke(request)?.toString() }.getOrNull() }
+
+        val methodFromField = requestVerbField?.let { runCatching { it.get(request) as? String }.getOrNull() }
+        val urlFromField = requestUrlField?.let { runCatching { it.get(request)?.toString() }.getOrNull() }
+
+        val dump = runCatching { request.toString() }.getOrNull()
+        val parsedMethod = dump
+            ?.let { Regex("method=([^,}]+)").find(it)?.groupValues?.getOrNull(1) }
+            ?.trim()
+        val parsedUrl = dump
+            ?.let { Regex("url=([^,}]+)").find(it)?.groupValues?.getOrNull(1) }
+            ?.trim()
+
+        val method = methodFromMethod ?: methodFromField ?: parsedMethod ?: "<unknown>"
+        val url = urlFromMethod ?: urlFromField ?: parsedUrl ?: "<unknown>"
+        return method to url
+    }
+
+    private fun resolveNoArgMethodByReturnType(clazz: Class<*>, returnType: Class<*>?): Method? {
+        if (returnType == null) return null
+
+        return clazz.declaredMethods.firstOrNull { method ->
+            method.parameterCount == 0 && method.returnType == returnType && method.name != "toString"
+        }?.apply {
+            isAccessible = true
+        }
+    }
+
+    private fun resolveFieldByType(clazz: Class<*>, fieldType: Class<*>?): Field? {
+        if (fieldType == null) return null
+
+        return clazz.declaredFields.firstOrNull { field ->
+            field.type == fieldType
+        }?.apply {
+            isAccessible = true
+        }
+    }
+
+    private fun resolveCallbackFailureMethod(callbackClass: Class<*>, callClass: Class<*>?): Method? {
+        if (callClass == null) return null
+
+        return callbackClass.declaredMethods.firstOrNull { method ->
+            method.parameterCount == 2 &&
+                method.parameterTypes[0].isAssignableFrom(callClass) &&
+                method.parameterTypes[1].isAssignableFrom(IOException::class.java)
+        }?.apply {
+            isAccessible = true
+        }
     }
 }

@@ -10,8 +10,7 @@ enum class Login5HandlingMode {
 
 data class BlockTrackingConfig(
     val blockedKeywords: List<String> = listOf(
-        "ads",
-        "tracking",
+        "gabo-receiver-service/v3/events",
     ),
     val login5HandlingMode: Login5HandlingMode = Login5HandlingMode.BLOCK_WHEN_AUTHENTICATED,
 )
