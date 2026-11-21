@@ -1,35 +1,111 @@
 package com.spine.projectspine.hooks.spotify.patches
 
 import com.spine.projectspine.core.utils.Logger
+import com.spine.projectspine.hooks.spotify.misc.NativeSessionProtection
 import de.robv.android.xposed.XposedHelpers
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 object UnlockPremiumPatch {
     private data class OverrideAttribute(
         val key: String,
         val overrideValue: Any,
-        val isExpected: Boolean = true,
+        // Default false: product-state attributes differ by Spotify version/account, so an
+        // absent one is normal, not a warning. Override still applies when present.
+        val isExpected: Boolean = false,
     )
 
+    /** ISO-8601 UTC instant one year ahead of process start, e.g. 2027-11-21T01:23:45Z */
+    private val oneYearFromNowIso: String =
+        OffsetDateTime.now(ZoneOffset.UTC)
+            .plusYears(1)
+            .truncatedTo(ChronoUnit.SECONDS)
+            .format(DateTimeFormatter.ISO_INSTANT)
+
     private val premiumOverrides = listOf(
-        OverrideAttribute("ads", false),
-        OverrideAttribute("player-license", "premium"),
-        OverrideAttribute("player-license-v2", "premium", isExpected = false),
-        OverrideAttribute("shuffle", false),
-        OverrideAttribute("on-demand", true),
-        OverrideAttribute("streaming", true),
-        OverrideAttribute("pick-and-shuffle", false),
-        OverrideAttribute("streaming-rules", ""),
-        OverrideAttribute("nft-disabled", "1"),
+
         OverrideAttribute("type", "premium"),
-        OverrideAttribute("can_use_superbird", true, isExpected = false),
-        OverrideAttribute("tablet-free", false, isExpected = false),
+        OverrideAttribute("ads", false),
+        OverrideAttribute("on-demand", true),
+        OverrideAttribute("streaming-rules", ""),
+        OverrideAttribute("catalogue", "premium"),
+        OverrideAttribute("product", "premium"),
+        OverrideAttribute("player-license", "premium"),
+        OverrideAttribute("shuffle", false),
+        OverrideAttribute("name", "Spotify Premium"),
+        OverrideAttribute("player-license-v2", "premium", isExpected = false),
+        OverrideAttribute("financial-product", "pr:premium,tc:0"),
+        OverrideAttribute("ab-ad-player-targeting", false),
+        OverrideAttribute("allow-advertising-id-transmission", false),
+        OverrideAttribute("restrict-advertising-id-transmission", true),
+        OverrideAttribute("audio-ad-frequency", false),
+        OverrideAttribute("video-ad-frequency", false),
+        OverrideAttribute("ad-formats", ""),
+        OverrideAttribute("unrestricted", true),
+        OverrideAttribute("shuffle-eligible", true),
+        OverrideAttribute("social-connect", true),
+        OverrideAttribute("tracks-in-collection-enabled", true),
+        OverrideAttribute("is-eligible-premium-unboxing", true),
+        OverrideAttribute("can_use_superbird", true),
+        OverrideAttribute("manager", true),
+        OverrideAttribute("nft-disabled", true),
+        OverrideAttribute("previous-streaming-rules", ""),
+        // high-bitrate intentionally NOT forced: requesting the premium-quality encrypted
+        // file gets its audio key denied (drm_denied) on a free account -> undecryptable
+        // audio -> decode fail -> skip. Let the player pick the standard file whose key is granted.
+        OverrideAttribute("shuffle-mode", false),
+        OverrideAttribute("pick-and-shuffle", false),
+        OverrideAttribute("subscription-enddate", oneYearFromNowIso),
+        OverrideAttribute("product-expiry", oneYearFromNowIso),
+        OverrideAttribute("trial-ends-at", "999999999"),
+        OverrideAttribute("current-period-end", "999999999"),
+        OverrideAttribute("premium-promotion-eligible", false),
+        OverrideAttribute("payments-initial-campaign", "default"),
+        // Server-pushed logout triggers: neutralize only if present, never seed (same as Eevee).
+        OverrideAttribute("forced_logout", "", isExpected = false),
+        OverrideAttribute("forced_logout_abroad_since", "", isExpected = false),
+        OverrideAttribute("force_logout", "", isExpected = false),
+        OverrideAttribute("logout_required", false, isExpected = false),
+        OverrideAttribute("session_invalidated", false, isExpected = false),
     )
 
     private var homeSectionIds: List<Int>? = null
     private var browseSectionIds: List<Int>? = null
     private var npvScrollSectionIds: List<Int>? = null
 
+    // Diagnostic: raw server values of the entitlement/logout keys, logged whenever they
+    // change, so the moment Spotify flags the account is timestamped in logcat.
+    private val watchKeys = listOf(
+        "type", "catalogue", "product", "player-license", "player-license-v2",
+        "on-demand", "streaming-rules", "previous-streaming-rules", "shuffle", "ads",
+        "financial-product", "payment-state", "subscription-enddate", "product-expiry",
+        "forced_logout", "force_logout", "forced_logout_abroad_since",
+        "logout_required", "session_invalidated",
+    )
+    private var lastSnapshot: String? = null
+
+    private fun logServerSnapshot(attributes: Map<String, *>) {
+        runCatching {
+            val snap = watchKeys.mapNotNull { key ->
+                val attribute = attributes[key] ?: return@mapNotNull null
+                val value = runCatching { XposedHelpers.getObjectField(attribute, "value_") }.getOrNull()
+                "$key=$value"
+            }.joinToString(" ")
+            if (snap.isNotEmpty() && snap != lastSnapshot) {
+                lastSnapshot = snap
+                Logger.info("[PS-SNAPSHOT] $snap")
+            }
+        }
+    }
+
     fun overrideAttributes(attributes: Map<String, *>) {
+        logServerSnapshot(attributes)
+        // Only apply premium while the client-token is healthy. During (re)auth the gate
+        // closes, we leave the real (free) state so the client-token handshake isn't
+        // wedged, then it reopens and premium re-applies. Self-healing across restarts.
+        if (!NativeSessionProtection.clientTokenReady()) return
         try {
             premiumOverrides.forEach { override ->
                 val attribute = attributes[override.key]
@@ -44,16 +120,29 @@ object UnlockPremiumPatch {
                     XposedHelpers.getObjectField(attribute, "value_")
                 }.getOrNull() ?: return@forEach
 
-                if (override.overrideValue == originalValue) return@forEach
+                // value_ is a proto oneof; a wrong type makes the typed getter throw ClassCastException.
+                val newValue = coerce(override.overrideValue, originalValue)
+                if (newValue == null) {
+                    Logger.warn("Attribute ${override.key} is ${originalValue.javaClass.simpleName}, skipping override")
+                    return@forEach
+                }
+                if (newValue == originalValue) return@forEach
 
                 Logger.infoDebugOnly(
-                    "Overriding account attribute ${override.key} from $originalValue to ${override.overrideValue}"
+                    "Overriding account attribute ${override.key} from $originalValue to $newValue"
                 )
-                XposedHelpers.setObjectField(attribute, "value_", override.overrideValue)
+                XposedHelpers.setObjectField(attribute, "value_", newValue)
             }
         } catch (ex: Exception) {
             Logger.error("overrideAttributes failure", ex)
         }
+    }
+
+    private fun coerce(value: Any, original: Any): Any? = when {
+        value.javaClass == original.javaClass -> value
+        original is String && value is Boolean -> if (value) "1" else "0"
+        original is Boolean && value is String -> value == "1" || value == "true"
+        else -> null
     }
 
     fun removeStationString(spotifyUriOrUrl: String): String {
@@ -70,8 +159,8 @@ object UnlockPremiumPatch {
         if (homeSectionIds == null) {
             val classLoader = sections.firstNotNullOfOrNull { it }?.javaClass?.classLoader ?: return
             homeSectionIds = listOfNotNull(
-                getIntConstantOrNull("com.spotify.home.evopage.homeapi.proto.Section", "VIDEO_BRAND_AD_FIELD_NUMBER", classLoader),
-                getIntConstantOrNull("com.spotify.home.evopage.homeapi.proto.Section", "IMAGE_BRAND_AD_FIELD_NUMBER", classLoader),
+                getIntConstantOrNull("com.spotify.casita.v1.resolved.Section", "VIDEO_BRAND_AD_FIELD_NUMBER", classLoader),
+                getIntConstantOrNull("com.spotify.casita.v1.resolved.Section", "IMAGE_BRAND_AD_FIELD_NUMBER", classLoader),
             )
         }
         removeSections(sections, fieldName = "featureTypeCase_", idsToRemove = homeSectionIds!!)

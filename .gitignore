@@ -12,3 +12,7 @@ build/
 app/build/
 stub/build/
 app/bin/
+.cxx/
+app/.cxx/
+eevee/
+findings/

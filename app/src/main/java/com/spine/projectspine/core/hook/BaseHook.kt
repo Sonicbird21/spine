@@ -116,12 +116,18 @@ abstract class BaseHook(private val app: Application, protected val lpparam: Loa
         }
     }
 
+    // Each fingerprint-based hook is independent: if its method isn't found on this Spotify
+    // version, skip just that feature with a warning instead of aborting the whole hook
+    // function (which would silently disable every later feature too). Keeps the module
+    // working across versions even when individual fingerprints drift.
     fun KProperty0<FindMethodFunc>.hookMethod(block: HookDsl<HookCallback>.() -> Unit) {
-        getDexMethod(this.name, this.get()).toMember().hookMethod(block)
+        runCatching { getDexMethod(this.name, this.get()).toMember().hookMethod(block) }
+            .onFailure { Logger.warn("Hook ${this.name} skipped: ${it.message}") }
     }
 
     fun KProperty0<FindMethodFunc>.hookMethod(callback: XC_MethodHook) {
-        XposedBridge.hookMethod(getDexMethod(this.name, this.get()).toMember(), callback)
+        runCatching { XposedBridge.hookMethod(getDexMethod(this.name, this.get()).toMember(), callback) }
+            .onFailure { Logger.warn("Hook ${this.name} skipped: ${it.message}") }
     }
 
     val KProperty0<FindMethodFunc>.member: Member

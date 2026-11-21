@@ -24,35 +24,6 @@ fun BaseHook.unlockPremium() {
         }
     }
 
-    ::buildQueryParametersFingerprint.hookMethod {
-        after { param ->
-            val result = param.result
-            val field = "checkDeviceCapability"
-            if (result.toString().contains("${field}=")) {
-                param.result = XposedBridge.invokeOriginalMethod(
-                    param.method,
-                    param.thisObject,
-                    arrayOf(param.args[0], true),
-                )
-            }
-        }
-    }
-
-    ::contextFromJsonFingerprint.hookMethod {
-        fun removeStationString(field: Field, obj: Any) {
-            field.isAccessible = true
-            val original = field.get(obj) as? String ?: return
-            field.set(obj, UnlockPremiumPatch.removeStationString(original))
-        }
-
-        after { param ->
-            val target = param.result ?: return@after
-            val clazz = target.javaClass
-            removeStationString(clazz.getDeclaredField("uri"), target)
-            removeStationString(clazz.getDeclaredField("url"), target)
-        }
-    }
-
     XposedHelpers.findAndHookMethod(
         "com.spotify.player.model.command.options.AutoValue_PlayerOptionOverrides\$Builder",
         classLoader,
@@ -256,6 +227,26 @@ fun BaseHook.unlockPremium() {
             if (!result.javaClass.name.endsWith("SingleOnErrorReturn")) return
             val justError = justMethod.invoke(null, onErrorField.get(result))
             param.result = justError
+        }
+    }
+
+    // Android counterpart of Eevee's SessionProtection: never start the daemons that tear the
+    // session down on server signals (AP permanent error, forced/remote/everywhere logout).
+    // User-initiated logout goes through LogoutService and is untouched.
+    val sessionKillerDaemons = setOf(
+        "APLogoutDaemon",
+        "ForcedLogoutDaemon",
+        "ForcedLogoutService",
+        "LogoutEverywhereDaemon",
+        "RemoteLogoutDaemon",
+    )
+    ::quasarStartServiceFingerprint.hookMethod {
+        before { param ->
+            val name = param.args[0] as? String ?: return@before
+            if (name in sessionKillerDaemons) {
+                Logger.infoDebugOnly("Blocked session daemon $name")
+                param.result = null
+            }
         }
     }
 

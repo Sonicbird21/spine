@@ -22,31 +22,34 @@ val attributesMapField = findFieldDirect {
     productStateProtoFingerprint().usingFields.single().field
 }
 
-val buildQueryParametersFingerprint = findMethodDirect {
+// The pubsub subscribe `b(String uri, parser) -> Observable`, found version-independently:
+// locate the method that uses the stable dealer URI string "ap://product-state-update"
+// (the subscriber), then pick the Observable-returning (String, …) method it invokes. That
+// invoked method is the pubsub subscribe we hook to drop the server's product-state push.
+val productStateUpdateSubscribeFingerprint = findMethodDirect {
     var result: MethodData? = null
     withBridge { bridge ->
-        result = bridge.findMethod {
-            matcher {
-                strings("trackRows", "device_type:tablet")
-            }
-        }.single()
+        val subscriber = bridge.findMethod {
+            matcher { usingStrings(listOf("ap://product-state-update")) }
+        }.firstOrNull()
+        result = subscriber?.invokes?.firstOrNull { m ->
+            val params = m.descriptor.substringAfter("(").substringBefore(")")
+            m.descriptor.endsWith("Lio/reactivex/rxjava3/core/Observable;") &&
+                params.startsWith("Ljava/lang/String;")
+        }
     }
     requireNotNull(result)
 }
 
-val contextFromJsonFingerprint = findMethodDirect {
+// Static parse entry: ProductStateProto.r(byte[]) -> ProductStateProto. This is where a
+// server product-state update is received, so overriding here spoofs premium at the
+// source (once per update) instead of mutating on every read (which flip-flops and churns
+// "force renew"). Hooking it coherently makes every received product state premium.
+val productStateParseFingerprint = findMethodDirect {
     fingerprint {
-        opcodes(
-            Opcode.INVOKE_STATIC,
-            Opcode.MOVE_RESULT_OBJECT,
-            Opcode.INVOKE_VIRTUAL,
-            Opcode.MOVE_RESULT_OBJECT,
-            Opcode.INVOKE_STATIC,
-        )
-        methodMatcher {
-            name = "fromJson"
-            declaredClass("voiceassistants.playermodels.ContextJsonAdapter", StringMatchType.EndsWith)
-        }
+        classMatcher { descriptor = "Lcom/spotify/remoteconfig/internal/ProductStateProto;" }
+        returns("Lcom/spotify/remoteconfig/internal/ProductStateProto;")
+        parameters("[B")
     }
 }
 
@@ -78,11 +81,16 @@ private fun structureGetSectionsFingerprint(className: String) = findMethodDirec
 }
 
 val homeStructureGetSectionsFingerprint =
-    structureGetSectionsFingerprint("homeapi.proto.HomeStructure")
+    structureGetSectionsFingerprint("casita.v1.resolved.HomeStructure")
 val browseStructureGetSectionsFingerprint =
     structureGetSectionsFingerprint("browsita.v1.resolved.BrowseStructure")
 val npvScrollStructureGetSectionsFingerprint =
     structureGetSectionsFingerprint("scrollsita.v1.NpvScrollStructure")
+
+// Quasar service registry: dgn.c(name, factory) starts a named daemon, returns null if skipped.
+val quasarStartServiceFingerprint = fingerprint {
+    strings(" created after shutdown invoked", " already started")
+}
 
 val pendragonJsonFetchMessageRequestFingerprint = findMethodDirect {
     var result: MethodData? = null

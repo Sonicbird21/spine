@@ -17,10 +17,22 @@ android {
         minSdk = 27
         versionCode = 1
         versionName = "0.2.0"
+
+        ndk {
+            // liborbit-jni-spotify.so patch targets are arm64-only.
+            abiFilters += "arm64-v8a"
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 
     buildFeatures {
         buildConfig = true
+        prefab = true
     }
 
     signingConfigs {
@@ -99,6 +111,7 @@ dependencies {
     implementation(libs.annotation)
     implementation(libs.dexkit)
     implementation(libs.flatbuffers.java)
+    implementation("com.bytedance.android:shadowhook:1.0.10")
     compileOnly(libs.xposed)
     compileOnly(project(":stub"))
 }
