@@ -12,6 +12,9 @@ permissions:
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    # Only ever build on main — push is already main-only, this also blocks a manual
+    # workflow_dispatch launched from any other branch.
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Check out repository
