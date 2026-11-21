@@ -9,6 +9,7 @@ import com.spine.projectspine.hooks.spotify.misc.blockProductStateUpdatePush
 import com.spine.projectspine.hooks.spotify.misc.bypassRootCheck
 import com.spine.projectspine.hooks.spotify.misc.logPlayerErrors
 import com.spine.projectspine.hooks.spotify.misc.privacy.sanitizeSharingLinks
+import com.spine.projectspine.hooks.spotify.misc.stabilizeClientToken
 import com.spine.projectspine.hooks.spotify.misc.unlockPremium
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
 
@@ -19,6 +20,7 @@ class SpotifyHook(app: Application, lpparam: LoadPackageParam) : BaseHook(app, l
         ::logPlayerErrors,
         ::bypassRootCheck,
         ::blockProductStateUpdatePush,
+        ::stabilizeClientToken,
     )
 
     init {

@@ -53,6 +53,19 @@ val productStateParseFingerprint = findMethodDirect {
     }
 }
 
+// The client-token chokepoint the HTTP interceptor calls for every request (k1c1.a()):
+// returns the sealed client-token (success type carries the token + two expiry longs, failure
+// type an int code + message). We hook it to serve the last good token through a failure
+// window instead of letting the failure wedge playback until relogin. Anchored on the stable
+// failure string + zero params: a sibling provider (q6h.b(int)) shares the string but takes an
+// int, so paramCount=0 disambiguates. No hardcoded obfuscated names.
+val clientTokenGetTokenFingerprint = findMethodDirect {
+    fingerprint {
+        strings("Client token request interrupted")
+        methodMatcher { paramCount = 0 }
+    }
+}
+
 val contextMenuViewModelClass = findClassDirect {
     runCatching {
         fingerprint {
