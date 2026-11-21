@@ -66,10 +66,19 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
+      # Delete the previous rolling-release (and its tag) so the next step recreates it
+      # fresh — otherwise GitHub keeps the original published_at and the release always
+      # shows the first publish date ("7 months ago") instead of the latest build.
+      - name: Delete previous rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete rolling-release --cleanup-tag --yes || true
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
           tag: rolling-release
+          commit: ${{ github.sha }}
           name: Release ${{ env.SHORT_SHA }}
           body: |
             Commit: ${{ env.SHORT_SHA }}
