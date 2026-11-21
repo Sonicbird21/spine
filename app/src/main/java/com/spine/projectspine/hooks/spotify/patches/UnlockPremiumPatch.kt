@@ -12,26 +12,15 @@ object UnlockPremiumPatch {
     private data class OverrideAttribute(
         val key: String,
         val overrideValue: Any,
-        // Default false: product-state attributes differ by Spotify version/account, so an
-        // absent one is normal, not a warning. Override still applies when present.
         val isExpected: Boolean = false,
     )
 
-    /** ISO-8601 UTC instant one year ahead of process start (matches Eevee's oneYearFromNow). */
     private val oneYearFromNowIso: String =
         OffsetDateTime.now(ZoneOffset.UTC)
             .plusYears(1)
             .truncatedTo(ChronoUnit.SECONDS)
             .format(DateTimeFormatter.ISO_INSTANT)
 
-    // Keys stripped from the product state entirely, mirroring what EeveeSpotify removes on iOS
-    // (DynamicPremium modifyAttributes + EeveePremiumForce stripKeys). These are the server's
-    // own anti-abuse / entitlement-validation signals; leaving the REAL (free) values in place
-    // while every other attribute claims premium is the inconsistency the backend cross-checks
-    // to invalidate the session. In particular `at-signal` is a change-triggered renewal signal
-    // (its mutation forces a token renew that re-fetches the real free state and exposes the
-    // spoof), and the eligibility/trial/upsell keys mark the account as non-premium. Eevee works
-    // on iOS precisely because it removes these; the Android module was leaving them all intact.
     private val stripKeys = setOf(
         "at-signal",
         "strider-key",
@@ -61,12 +50,7 @@ object UnlockPremiumPatch {
         OverrideAttribute("shuffle", false),
         OverrideAttribute("name", "Spotify Premium"),
         OverrideAttribute("player-license-v2", "premium", isExpected = false),
-        // Eevee uses the bare "pr:premium,tc:0" (proven to not trip detection). Matching a real
-        // account's full rt: rate-plan string is both unnecessary (Eevee shows exact-match isn't
-        // the detection mechanism — stripping the validation keys below is) and account-specific.
         OverrideAttribute("financial-product", "pr:premium,tc:0"),
-        // Values taken from Eevee's forcedPremiumString (ad-tracking off). Harmless to detection
-        // since they're not validation keys; kept for ad-id privacy parity with Eevee.
         OverrideAttribute("ab-ad-player-targeting", false),
         OverrideAttribute("allow-advertising-id-transmission", false),
         OverrideAttribute("restrict-advertising-id-transmission", true),
@@ -82,20 +66,15 @@ object UnlockPremiumPatch {
         OverrideAttribute("manager", true),
         OverrideAttribute("nft-disabled", true),
         OverrideAttribute("previous-streaming-rules", ""),
-        // high-bitrate intentionally NOT forced: requesting the premium-quality encrypted
-        // file gets its audio key denied (drm_denied) on a free account -> undecryptable
-        // audio -> decode fail -> skip. Let the player pick the standard file whose key is granted.
         OverrideAttribute("shuffle-mode", false),
         OverrideAttribute("pick-and-shuffle", false),
-        // Eevee forces these to one year out (proven). The exact value isn't the detection
-        // vector — the stripped validation keys below are.
         OverrideAttribute("subscription-enddate", oneYearFromNowIso),
         OverrideAttribute("product-expiry", oneYearFromNowIso),
         OverrideAttribute("trial-ends-at", "999999999"),
         OverrideAttribute("current-period-end", "999999999"),
         OverrideAttribute("premium-promotion-eligible", false),
         OverrideAttribute("payments-initial-campaign", "default"),
-        // Server-pushed logout triggers: neutralize only if present, never seed (same as Eevee).
+        // potential loggout triggers
         OverrideAttribute("forced_logout", "", isExpected = false),
         OverrideAttribute("forced_logout_abroad_since", "", isExpected = false),
         OverrideAttribute("force_logout", "", isExpected = false),
@@ -107,8 +86,6 @@ object UnlockPremiumPatch {
     private var browseSectionIds: List<Int>? = null
     private var npvScrollSectionIds: List<Int>? = null
 
-    // Diagnostic: raw server values of the entitlement/logout keys, logged whenever they
-    // change, so the moment Spotify flags the account is timestamped in logcat.
     private val watchKeys = listOf(
         "type", "catalogue", "product", "player-license", "player-license-v2",
         "on-demand", "streaming-rules", "previous-streaming-rules", "shuffle", "ads",
@@ -134,21 +111,12 @@ object UnlockPremiumPatch {
 
     @Volatile private var stripReported = false
 
-    // Remove the server's validation/anti-abuse keys from the live product-state map (Eevee's
-    // removeValue approach). Runs unconditionally — even when premium is gated off — because the
-    // churn these keys drive (esp. at-signal renewals re-fetching the real free state) is what
-    // exposes the spoof. The proto map may be immutable; if so, removal throws and we fall back
-    // to blanking the value (coerced to the attribute's own type) so the key at least stops
-    // carrying its real signal. shortcut: blanking is weaker than removal for keys the backend
-    // treats "present-but-empty" differently from "absent"; upgrade to byte-level parse rewrite
-    // if testing shows a blanked key still triggers invalidation.
     private fun stripValidationKeys(attributes: Map<String, *>) {
         val mutable = attributes as? MutableMap<String, Any?>
         stripKeys.forEach { key ->
             val attribute = attributes[key] ?: return@forEach
             val removed = mutable != null && runCatching { mutable.remove(key); mutable[key] == null }.getOrDefault(false)
             if (!removed) {
-                // Immutable map: neutralize in place by blanking value_ to the attribute's type.
                 runCatching {
                     val original = XposedHelpers.getObjectField(attribute, "value_")
                     val blank = coerce("", original)
@@ -167,9 +135,7 @@ object UnlockPremiumPatch {
     fun overrideAttributes(attributes: Map<String, *>) {
         logServerSnapshot(attributes)
         stripValidationKeys(attributes)
-        // Only apply premium while the client-token is healthy. During (re)auth the gate
-        // closes, we leave the real (free) state so the client-token handshake isn't
-        // wedged, then it reopens and premium re-applies. Self-healing across restarts.
+    
         if (!NativeSessionProtection.clientTokenReady()) return
         try {
             premiumOverrides.forEach { override ->
@@ -185,7 +151,6 @@ object UnlockPremiumPatch {
                     XposedHelpers.getObjectField(attribute, "value_")
                 }.getOrNull() ?: return@forEach
 
-                // value_ is a proto oneof; a wrong type makes the typed getter throw ClassCastException.
                 val newValue = coerce(override.overrideValue, originalValue)
                 if (newValue == null) {
                     Logger.warn("Attribute ${override.key} is ${originalValue.javaClass.simpleName}, skipping override")

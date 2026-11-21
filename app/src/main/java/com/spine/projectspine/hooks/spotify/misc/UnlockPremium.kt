@@ -102,7 +102,6 @@ fun BaseHook.unlockPremium() {
                 if (resolvedField != null) {
                     runCatching { resolvedField.get(vm) == true }.getOrDefault(false)
                 } else {
-                    // Last-resort fallback when field layout changes: rely on generated ViewModel.toString labels.
                     vm.toString().contains("isPremiumUpsell=true")
                 }
             } != true
@@ -230,9 +229,6 @@ fun BaseHook.unlockPremium() {
         }
     }
 
-    // Android counterpart of Eevee's SessionProtection: never start the daemons that tear the
-    // session down on server signals (AP permanent error, forced/remote/everywhere logout).
-    // User-initiated logout goes through LogoutService and is untouched.
     val sessionKillerDaemons = setOf(
         "APLogoutDaemon",
         "ForcedLogoutDaemon",

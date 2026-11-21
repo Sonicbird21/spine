@@ -6,12 +6,6 @@ import de.robv.android.xposed.XC_MethodReplacement
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 
-// Spotify bundles Ravelin's anti-fraud SDK, whose librootChecker.so does native root/
-// Magisk detection (checkForRoot scans for su-type binaries; isMagiskPresent scans
-// /proc/self/mounts for magisk/core-mirror/core-img). Force both to report clean so the
-// device isn't flagged as rooted. Both are native boolean methods on RootCheckerNative;
-// XC_MethodReplacement replaces them without calling into the native lib. Names aren't
-// obfuscated (JNI symbol names must match the Java class/method).
 fun BaseHook.bypassRootCheck() {
     val clazz = runCatching {
         XposedHelpers.findClass("com.ravelin.core.util.security.RootCheckerNative", classLoader)

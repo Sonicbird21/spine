@@ -1,18 +1,4 @@
-// Native session-invalidation protection for Spotify's liborbit-jni-spotify.so.
-// Runtime inline byte-patch (no trampoline engine): each patch flips a branch or
-// NOPs one call, forcing the binary down a path it already executes itself, so it
-// cannot crash -- it only skips the teardown.
-//
-// liborbit is mapped directly out of split_config.arm64_v8a.apk (extractNativeLibs=
-// false), so /proc/self/maps names the APK, not the .so, and the lib lives in a
-// different linker namespace than this module -- so neither a soname match nor
-// dl_iterate_phdr works. Instead we scan maps for ELF headers and pick the one whose
-// bytes at all four patch sites match: a 128-bit fingerprint that uniquely identifies
-// liborbit and doubles as the version guard. On any mismatch nothing is patched.
-//
-// shortcut: offsets + expected words are tied to Spotify arm64 build 148653771.
-// On a Spotify update, re-derive them in IDA (search the log strings
-// "Permanent OAuth error for session" / "Broadcasting forced logout for session").
+// This is obsolete and can be removed but i won't bother since logging might be needed in the future. not version-safe.
 
 #include <jni.h>
 #include <cstdint>
@@ -28,12 +14,6 @@
 
 #define LOG(...) __android_log_print(ANDROID_LOG_INFO, "SpineNative", __VA_ARGS__)
 
-// --- Native logger surfacing ---------------------------------------------------
-// liborbit logs through one central formatter (sub_15EF9C8) whose 1st arg is the
-// level and 4th arg (x3) is the format string, but these never reach logcat. We
-// inline-hook it and re-emit only the format strings that match our interest set,
-// so a playback break prints its real native reason. Filtering keeps this hot,
-// variadic function cheap and avoids flooding logcat.
 static const uintptr_t kLoggerVa = 0x15EF9C8;
 
 typedef void *(*logger_fn)(void *, void *, void *, const char *, void *, void *,
@@ -41,7 +21,6 @@ typedef void *(*logger_fn)(void *, void *, void *, const char *, void *, void *,
 static logger_fn orig_logger = nullptr;
 
 static bool fmt_of_interest(const char *s) {
-    // The "anchor not ready" line floods thousands of times; drop it explicitly.
     if (strstr(s, "anchor not ready")) return false;
     static const char *kNeedles[] = {
         "error", "logout", "licen", "playback", "token", "product", "renew",
@@ -53,9 +32,6 @@ static bool fmt_of_interest(const char *s) {
     return false;
 }
 
-// For the reason-bearing messages, pull the %s/%d args (arg0 = a5 = x4, etc.) so we
-// see the actual failure reason, not just the format string. Arg layout is read from
-// each message's own format specifiers, so the casts are type-correct and safe.
 static void emit_with_reason(long level, const char *fmt, void *a5, void *a6, void *a7,
                              void *a8, void *a9, void *a10) {
     auto S = [](void *p) -> const char * { return p ? reinterpret_cast<const char *>(p) : "(null)"; };
@@ -100,15 +76,6 @@ static void *proxy_logger(void *a1, void *a2, void *a3, const char *fmt, void *a
     return orig_logger(a1, a2, a3, fmt, a5, a6, a7, a8, a9, a10, a11, a12);
 }
 
-// --- Client-token gate -------------------------------------------------------------
-// sub_B95910 is the client-token acquirer's completion handler (both the granted path
-// and every failure path route through it). The result's error code at a2+88 is -1 on
-// success (token granted) and an error code otherwise. We expose this as a gate: the Java
-// product-state override only applies premium while the client-token is healthy. When the
-// client-token wedges (restart/reconnect) it flips to a failure here -> gate OFF -> the
-// override backs off to free -> the client-token recovers on the free state -> success
-// here -> gate ON -> premium re-enables. Self-healing; no manual relogin.
-// Default true so that if this hook never installs, premium behaves as before (ungated).
 static std::atomic<bool> g_ct_ready{true};
 static const uintptr_t kCtCompleteVa = 0xB95910;
 typedef void *(*ct_complete_fn)(void *, void *);
@@ -159,19 +126,13 @@ static void install_logger_hook(uintptr_t base) {
 }
 
 struct Patch {
-    uintptr_t va;    // IDA virtual address (relative to liborbit's load base)
-    uint32_t expect; // original instruction word
-    uint32_t repl;   // replacement word
+    uintptr_t va;
+    uint32_t expect;
+    uint32_t repl;  
     const char *name;
 };
 
 static Patch kPatches[] = {
-    // sub_BEC96C: stop our product-state override from triggering "Product state changed,
-    // force renew". That renew reloads the OAuth token, and when it lands during Spotify's
-    // client-token/auth handshake (cold start, reopen, periodic refresh) it wedges the
-    // client-token -> every spclient request fails http_error_fail -> no audio key -> skip.
-    // Suppressing the product-state-triggered renew leaves the normal on-expiry token
-    // refresh intact, so streaming still gets a valid token.
     // @ 0xBEC9A4: TBZ -> B loc_BEC9CC (never run the force-renew block).
     {0xBEC9A4, 0x36000154, 0x1400000A, "oauth-skip-force-renew"},
     // @ 0xBECAD4: NOP TBZ (at-signal change never clears the token either).
@@ -187,9 +148,6 @@ struct Region {
 static Region g_regions[8192];
 static int g_nreg;
 
-// Read process memory through /proc/self/mem: pread returns an error (not SIGSEGV) if the
-// page is unmapped. Needed because a maps region can be unmapped between parse_maps and the
-// read during early startup (JIT/lib churn) -- a direct deref there crashes in memcmp.
 static int g_mem_fd = -1;
 static bool safe_read(uintptr_t addr, void *buf, size_t len) {
     if (g_mem_fd < 0) g_mem_fd = open("/proc/self/mem", O_RDONLY | O_CLOEXEC);
@@ -197,11 +155,6 @@ static bool safe_read(uintptr_t addr, void *buf, size_t len) {
     return pread(g_mem_fd, buf, len, static_cast<off_t>(addr)) == static_cast<ssize_t>(len);
 }
 
-// A/B toggle: when false, liborbit is located and the native logger is installed,
-// but the session patches are NOT applied -- to test if they cause the restart break.
-// Force-renew suppression is confirmed harmful (premium-scoped token never issued ->
-// on-demand denied after the first skip), so no native session patches are applied; the
-// restart wedge is handled on the Java side by timing the product-state override.
 static const bool g_apply_patches = false;
 
 static void parse_maps() {
@@ -232,8 +185,6 @@ static void parse_maps() {
     fclose(f);
 }
 
-// Is [t, t+4) inside an executable mapping backed by the same file? Guards every
-// code read/write so a wrong base can never dereference an unmapped address.
 static bool in_exec_region(uintptr_t t, const char *path) {
     for (int i = 0; i < g_nreg; i++) {
         Region &r = g_regions[i];
@@ -247,7 +198,7 @@ static bool verify_site(uintptr_t base, const char *path, const Patch &p) {
     if (!in_exec_region(t, path)) return false;
     uint32_t w;
     if (!safe_read(t, &w, sizeof w)) return false;
-    return w == p.expect || w == p.repl; // repl so a re-scan still identifies the base
+    return w == p.expect || w == p.repl;
 }
 
 static uintptr_t find_base() {
@@ -257,8 +208,6 @@ static uintptr_t find_base() {
         Region &r = g_regions[i];
         if (!r.readable || r.path[0] == 0) continue;
         if (!strstr(r.path, ".apk") && !strstr(r.path, ".so")) continue;
-        // An ELF header mapped here means this is some lib's base (first LOAD, vaddr 0).
-        // safe_read, not a direct deref: the region may be unmapped by now (startup race).
         unsigned char magic[4];
         if (!safe_read(r.start, magic, 4) || memcmp(magic, elf_magic, 4) != 0) continue;
         uintptr_t base = r.start;
@@ -293,8 +242,6 @@ static void patch_one(uintptr_t base, const Patch &p) {
     LOG("%s: patched", p.name);
 }
 
-// true  = library located and patches attempted (stop polling)
-// false = library not located yet (keep polling)
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_spine_projectspine_hooks_spotify_misc_NativeSessionProtection_tryInstall(JNIEnv *, jobject) {
     uintptr_t base = find_base();
@@ -303,9 +250,7 @@ Java_com_spine_projectspine_hooks_spotify_misc_NativeSessionProtection_tryInstal
         if (!warned) { warned = true; LOG("liborbit not located yet (scanned %d regions)", g_nreg); }
         return JNI_FALSE;
     }
-    // A/B: patches disabled to test whether oauth-error-skip-teardown / forced-logout-nop
-    // are blocking auth recovery on restart (the "wedged until relogin" break). find_base
-    // still uses kPatches as its fingerprint; we just don't apply them.
+
     if (g_apply_patches) for (auto &p : kPatches) patch_one(base, p);
     install_logger_hook(base);
     install_ct_gate(base);

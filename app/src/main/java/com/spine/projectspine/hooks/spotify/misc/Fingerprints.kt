@@ -22,10 +22,6 @@ val attributesMapField = findFieldDirect {
     productStateProtoFingerprint().usingFields.single().field
 }
 
-// The pubsub subscribe `b(String uri, parser) -> Observable`, found version-independently:
-// locate the method that uses the stable dealer URI string "ap://product-state-update"
-// (the subscriber), then pick the Observable-returning (String, …) method it invokes. That
-// invoked method is the pubsub subscribe we hook to drop the server's product-state push.
 val productStateUpdateSubscribeFingerprint = findMethodDirect {
     var result: MethodData? = null
     withBridge { bridge ->
@@ -41,10 +37,6 @@ val productStateUpdateSubscribeFingerprint = findMethodDirect {
     requireNotNull(result)
 }
 
-// Static parse entry: ProductStateProto.r(byte[]) -> ProductStateProto. This is where a
-// server product-state update is received, so overriding here spoofs premium at the
-// source (once per update) instead of mutating on every read (which flip-flops and churns
-// "force renew"). Hooking it coherently makes every received product state premium.
 val productStateParseFingerprint = findMethodDirect {
     fingerprint {
         classMatcher { descriptor = "Lcom/spotify/remoteconfig/internal/ProductStateProto;" }
@@ -53,12 +45,6 @@ val productStateParseFingerprint = findMethodDirect {
     }
 }
 
-// The client-token chokepoint the HTTP interceptor calls for every request (k1c1.a()):
-// returns the sealed client-token (success type carries the token + two expiry longs, failure
-// type an int code + message). We hook it to serve the last good token through a failure
-// window instead of letting the failure wedge playback until relogin. Anchored on the stable
-// failure string + zero params: a sibling provider (q6h.b(int)) shares the string but takes an
-// int, so paramCount=0 disambiguates. No hardcoded obfuscated names.
 val clientTokenGetTokenFingerprint = findMethodDirect {
     fingerprint {
         strings("Client token request interrupted")
@@ -100,7 +86,6 @@ val browseStructureGetSectionsFingerprint =
 val npvScrollStructureGetSectionsFingerprint =
     structureGetSectionsFingerprint("scrollsita.v1.NpvScrollStructure")
 
-// Quasar service registry: dgn.c(name, factory) starts a named daemon, returns null if skipped.
 val quasarStartServiceFingerprint = fingerprint {
     strings(" created after shutdown invoked", " already started")
 }

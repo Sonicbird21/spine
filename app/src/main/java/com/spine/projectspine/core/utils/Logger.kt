@@ -3,10 +3,6 @@ package com.spine.projectspine.core.utils
 import com.spine.projectspine.BuildConfig
 import de.robv.android.xposed.XposedBridge
 
-/**
- * Logger that writes to LSPosed bridge and console.
- * Automatically tags all logs with the module name for easy filtering.
- */
 object Logger {
     private const val TAG = "ProjectSpine"
 

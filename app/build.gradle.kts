@@ -19,7 +19,6 @@ android {
         versionName = "0.2.0"
 
         ndk {
-            // liborbit-jni-spotify.so patch targets are arm64-only.
             abiFilters += "arm64-v8a"
         }
     }
