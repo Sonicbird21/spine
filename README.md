@@ -4,6 +4,8 @@ Xposed/DexKit module for Spotify modifications.
 
 ## Quick Start
 
+## -> Working Builds in Releases (no logouts, no session invalidations, full premium)
+
 ### Prerequisites
 - Android Studio / Gradle 9+
 - JDK 17
